@@ -1,4 +1,4 @@
-import { mockRules } from "../mock/rules";
+import { mockRules } from "../../mock/rules";
 
 export default function RuleList() {
   return (
