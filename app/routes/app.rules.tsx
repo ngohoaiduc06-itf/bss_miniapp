@@ -1,7 +1,7 @@
+// import RuleForm from "../components/rule-form/ RuleForm";
 
-
-export default function TestPage() {
-  return (
-    <h1>abc</h1>
-  );
-}
+// export default function CreateRulePage() {
+//   return (
+//     <h1>abcbc</h1>
+//   );
+// }

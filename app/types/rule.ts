@@ -9,20 +9,13 @@ export type PricingType =
 
 export interface Rule {
   id: string;
-
   name: string;
-
   status: RuleStatus;
-
   applyTo: ApplyToType;
-
   tags: string[];
-
+  priority: number;
   pricingType: PricingType;
-
   value: number;
-
   createdAt?: string;
-
   updatedAt?: string;
 }
