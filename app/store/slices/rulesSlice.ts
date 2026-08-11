@@ -6,6 +6,7 @@ import {
 import {
   createRule as createRuleApi,
   deleteRule as deleteRuleApi,
+  getRule as getRuleApi,
   getRules,
   updateRule as updateRuleApi,
 } from "../../api/ruleApi";
@@ -31,6 +32,13 @@ export const fetchRules = createAsyncThunk(
   "rules/fetchRules",
   async (shopId: number) => {
     return await getRules(shopId);
+  },
+);
+
+export const fetchRuleById = createAsyncThunk(
+  "rules/fetchRuleById",
+  async (id: string) => {
+    return await getRuleApi(id);
   },
 );
 
@@ -120,6 +128,48 @@ const rulesSlice = createSlice({
           state.error =
             action.error.message ??
             "Failed to load rules";
+        },
+      )
+
+      // GET ONE RULE
+      .addCase(
+        fetchRuleById.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        fetchRuleById.fulfilled,
+        (state, action) => {
+          state.loading = false;
+
+          const index =
+            state.items.findIndex(
+              (rule) =>
+                String(rule.id) ===
+                String(action.payload.id),
+            );
+
+          if (index === -1) {
+            state.items.push(
+              action.payload,
+            );
+          } else {
+            state.items[index] =
+              action.payload;
+          }
+        },
+      )
+
+      .addCase(
+        fetchRuleById.rejected,
+        (state, action) => {
+          state.loading = false;
+          state.error =
+            action.error.message ??
+            "Failed to load rule";
         },
       )
 

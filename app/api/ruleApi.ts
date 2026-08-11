@@ -45,6 +45,19 @@ export async function getRules(
 }
 
 /**
+ * GET /api/rules/:id
+ */
+export async function getRule(
+  id: string,
+): Promise<Rule> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/rules/${id}`,
+  );
+
+  return handleResponse<Rule>(response);
+}
+
+/**
  * POST /api/rules
  */
 export async function createRule(

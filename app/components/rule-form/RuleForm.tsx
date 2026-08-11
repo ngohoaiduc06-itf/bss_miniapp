@@ -33,6 +33,7 @@ import {
 
 import {
   createRule,
+  fetchRuleById,
   updateRule,
 } from "../../store/slices/rulesSlice";
 
@@ -69,7 +70,8 @@ export default function RuleForm({
   const rule = useAppSelector(
     (state) =>
       state.rules.items.find(
-        (item) => String(item.id) === ruleId,
+        (item) =>
+          String(item.id) === String(ruleId),
       ),
   );
 
@@ -151,6 +153,23 @@ export default function RuleForm({
   }, [
     isEdit,
     rule,
+  ]);
+
+  useEffect(() => {
+    if (!isEdit || !ruleId) {
+      return;
+    }
+
+    if (!rule) {
+      dispatch(
+        fetchRuleById(ruleId),
+      );
+    }
+  }, [
+    isEdit,
+    ruleId,
+    rule,
+    dispatch,
   ]);
 
   const addTag = () => {
