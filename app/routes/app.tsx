@@ -91,7 +91,7 @@ export default function App() {
             Home
           </a>
           <a href="/app">Rules</a>
-          <a href="/app/settings">Settings</a>
+          {/* <a href="/app/settings/email">Settings</a> */}
         </NavMenu>
         <Outlet />
       </PolarisAppProvider>

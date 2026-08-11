@@ -20,13 +20,14 @@ import {
   SortAscendingIcon,
 } from "@shopify/polaris-icons";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   deleteRule,
-  duplicateRule,
+  // duplicateRule,
+  fetchRules,
 } from "../../store/slices/rulesSlice";
 
 import type { Rule } from "../../types/rule";
@@ -47,6 +48,26 @@ export default function RuleList() {
   const rules = useAppSelector(
     (state) => state.rules.items,
   );
+
+  const shopData = useAppSelector(
+    (state) => state.shopData,
+  );
+
+  const loading = useAppSelector(
+    (state) => state.rules.loading,
+  );
+
+  const error = useAppSelector(
+    (state) => state.rules.error,
+  );
+
+  useEffect(() => {
+    if (!shopData.id) {
+      return;
+    }
+
+    dispatch(fetchRules(shopData.id));
+  }, [dispatch, shopData.id]);
 
   const [searchOpen, setSearchOpen] =
     useState(false);
@@ -100,14 +121,14 @@ export default function RuleList() {
         case "createdAt": {
           const dateA = a.createdAt
             ? new Date(
-                a.createdAt,
-              ).getTime()
+              a.createdAt,
+            ).getTime()
             : 0;
 
           const dateB = b.createdAt
             ? new Date(
-                b.createdAt,
-              ).getTime()
+              b.createdAt,
+            ).getTime()
             : 0;
 
           comparison = dateA - dateB;
@@ -170,12 +191,12 @@ export default function RuleList() {
       `/app/rules/${rule.id}/edit`,
     );
   };
-  
-  const handleDuplicate = (rule: Rule) => {
-    dispatch(
-      duplicateRule(rule.id),
-    );
-  };
+
+  // const handleDuplicate = (rule: Rule) => {
+  //   dispatch(
+  //     duplicateRule(rule.id),
+  //   );
+  // };
 
   const handleDelete = (rule: Rule) => {
     const confirmed =
@@ -198,6 +219,7 @@ export default function RuleList() {
   };
 
   const handleAddRule = () => {
+    console.log("Hello Word")
     navigate("/app/rules/new");
   };
 
@@ -444,7 +466,7 @@ export default function RuleList() {
       </Box>
 
       {displayedRules.length ===
-      0 ? (
+        0 ? (
         <Box padding="800">
           <EmptyState
             heading="No rules found"
@@ -603,11 +625,11 @@ export default function RuleList() {
                       variant="secondary"
                       size="slim"
                       accessibilityLabel={`Duplicate ${rule.name}`}
-                      onClick={() =>
-                        handleDuplicate(
-                          rule,
-                        )
-                      }
+                    // onClick={() =>
+                    //   handleDuplicate(
+                    //     rule,
+                    //   )
+                    // }
                     />
 
                     {/* DELETE */}

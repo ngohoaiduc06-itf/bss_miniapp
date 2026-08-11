@@ -7,3 +7,5 @@ allowBuilds:
   esbuild: true
   prisma: true
   unrs-resolver: true
+minimumReleaseAgeExclude:
+  - mysql2@3.23.3

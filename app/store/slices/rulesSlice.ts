@@ -1,137 +1,241 @@
 import {
+  createAsyncThunk,
   createSlice,
-  type PayloadAction,
 } from "@reduxjs/toolkit";
 
-import { mockRules } from "../../mock/rules";
+import {
+  createRule as createRuleApi,
+  deleteRule as deleteRuleApi,
+  getRules,
+  updateRule as updateRuleApi,
+} from "../../api/ruleApi";
+
 import type { Rule } from "../../types/rule";
 
 interface RulesState {
   items: Rule[];
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: RulesState = {
-  items: mockRules,
+  items: [],
+  loading: false,
+  error: null,
 };
+
+/**
+ * GET rules
+ */
+export const fetchRules = createAsyncThunk(
+  "rules/fetchRules",
+  async (shopId: number) => {
+    return await getRules(shopId);
+  },
+);
+
+/**
+ * CREATE rule
+ */
+export const createRule = createAsyncThunk(
+  "rules/createRule",
+  async ({
+    shopId,
+    data,
+  }: {
+    shopId: number;
+    data: Omit<
+      Rule,
+      "id" | "createdAt" | "updatedAt"
+    >;
+  }) => {
+    return await createRuleApi({
+      ...data,
+      shopId,
+    });
+  },
+);
+
+/**
+ * UPDATE rule
+ */
+export const updateRule = createAsyncThunk(
+  "rules/updateRule",
+  async (rule: Rule) => {
+    return await updateRuleApi(
+      rule.id,
+      rule,
+    );
+  },
+);
+
+/**
+ * DELETE rule
+ */
+export const deleteRule = createAsyncThunk(
+  "rules/deleteRule",
+  async (id: string) => {
+    await deleteRuleApi(id);
+
+    return id;
+  },
+);
 
 const rulesSlice = createSlice({
   name: "rules",
 
   initialState,
 
-  reducers: {
-    createRule: (
-      state,
-      action: PayloadAction<
-        Omit<Rule, "id" | "createdAt" | "updatedAt">
-      >,
-    ) => {
-      const now = new Date()
-        .toISOString()
-        .split("T")[0];
+  reducers: {},
 
-      const maxPriority = state.items.reduce(
-        (max, rule) =>
-          Math.max(max, rule.priority ?? 0),
-        0,
+  extraReducers: (builder) => {
+    builder
+
+      // =========================
+      // GET
+      // =========================
+
+      .addCase(
+        fetchRules.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        fetchRules.fulfilled,
+        (state, action) => {
+          state.loading = false;
+          state.items =
+            action.payload;
+        },
+      )
+
+      .addCase(
+        fetchRules.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.error.message ??
+            "Failed to load rules";
+        },
+      )
+
+      // =========================
+      // CREATE
+      // =========================
+
+      .addCase(
+        createRule.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        createRule.fulfilled,
+        (state, action) => {
+          state.loading = false;
+
+          state.items.push(
+            action.payload,
+          );
+        },
+      )
+
+      .addCase(
+        createRule.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.error.message ??
+            "Failed to create rule";
+        },
+      )
+
+      // =========================
+      // UPDATE
+      // =========================
+
+      .addCase(
+        updateRule.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        updateRule.fulfilled,
+        (state, action) => {
+          state.loading = false;
+
+          const index =
+            state.items.findIndex(
+              (rule) =>
+                rule.id ===
+                action.payload.id,
+            );
+
+          if (index !== -1) {
+            state.items[index] =
+              action.payload;
+          }
+        },
+      )
+
+      .addCase(
+        updateRule.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.error.message ??
+            "Failed to update rule";
+        },
+      )
+
+      // =========================
+      // DELETE
+      // =========================
+
+      .addCase(
+        deleteRule.pending,
+        (state) => {
+          state.loading = true;
+          state.error = null;
+        },
+      )
+
+      .addCase(
+        deleteRule.fulfilled,
+        (state, action) => {
+          state.loading = false;
+
+          state.items =
+            state.items.filter(
+              (rule) =>
+                rule.id !==
+                action.payload,
+            );
+        },
+      )
+
+      .addCase(
+        deleteRule.rejected,
+        (state, action) => {
+          state.loading = false;
+
+          state.error =
+            action.error.message ??
+            "Failed to delete rule";
+        },
       );
-
-      const newRule: Rule = {
-        ...action.payload,
-
-        id: crypto.randomUUID(),
-
-        priority: maxPriority + 1,
-
-        createdAt: now,
-
-        updatedAt: now,
-      };
-
-      state.items.push(newRule);
-    },
-
-    updateRule: (
-      state,
-      action: PayloadAction<Rule>,
-    ) => {
-      const index = state.items.findIndex(
-        (rule) =>
-          rule.id === action.payload.id,
-      );
-
-      if (index === -1) {
-        return;
-      }
-
-      state.items[index] = {
-        ...action.payload,
-
-        updatedAt: new Date()
-          .toISOString()
-          .split("T")[0],
-      };
-    },
-
-    deleteRule: (
-      state,
-      action: PayloadAction<string>,
-    ) => {
-      state.items = state.items.filter(
-        (rule) =>
-          rule.id !== action.payload,
-      );
-    },
-
-    duplicateRule: (
-      state,
-      action: PayloadAction<string>,
-    ) => {
-      const sourceRule = state.items.find(
-        (rule) =>
-          rule.id === action.payload,
-      );
-
-      if (!sourceRule) {
-        return;
-      }
-
-      const now = new Date()
-        .toISOString()
-        .split("T")[0];
-
-      const maxPriority = state.items.reduce(
-        (max, rule) =>
-          Math.max(max, rule.priority ?? 0),
-        0,
-      );
-
-      const duplicatedRule: Rule = {
-        ...sourceRule,
-
-        id: crypto.randomUUID(),
-
-        name: `${sourceRule.name} Copy`,
-
-        priority: maxPriority + 1,
-
-        createdAt: now,
-
-        updatedAt: now,
-      };
-
-      state.items.push(
-        duplicatedRule,
-      );
-    },
   },
 });
-
-export const {
-  createRule,
-  updateRule,
-  deleteRule,
-  duplicateRule,
-} = rulesSlice.actions;
 
 export default rulesSlice.reducer;

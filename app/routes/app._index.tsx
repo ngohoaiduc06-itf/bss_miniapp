@@ -11,7 +11,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import prisma from "app/db.server";
 
 // Rule
-import RuleList from "../components/rule-list/ RuleList";
+import RuleList from "../components/rule-list/RuleList";
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
   await authenticate.admin(request);

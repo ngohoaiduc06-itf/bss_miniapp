@@ -58,6 +58,8 @@ export default function RuleForm({
 
   const dispatch = useAppDispatch();
 
+  const shopData = useAppSelector((state) => state.shopData);
+
   const { mdDown } =
     useBreakpoints();
 
@@ -67,8 +69,7 @@ export default function RuleForm({
   const rule = useAppSelector(
     (state) =>
       state.rules.items.find(
-        (item) =>
-          item.id === ruleId,
+        (item) => String(item.id) === ruleId,
       ),
   );
 
@@ -82,13 +83,13 @@ export default function RuleForm({
       "enable" | "disable"
     >(
       rule?.status ??
-        "enable",
+      "enable",
     );
 
   const [applyTo, setApplyTo] =
     useState<ApplyToType>(
       rule?.applyTo ??
-        "all",
+      "all",
     );
 
   const [tagInput, setTagInput] =
@@ -105,13 +106,13 @@ export default function RuleForm({
   ] =
     useState<PricingType>(
       rule?.pricingType ??
-        "fixedPrice",
+      "fixedPrice",
     );
 
   const [amount, setAmount] =
     useState(
       rule?.value?.toString() ??
-        "20",
+      "20",
     );
 
   const [
@@ -202,7 +203,7 @@ export default function RuleForm({
       originalPrice;
 
     switch (
-      pricingType
+    pricingType
     ) {
       case "fixedPrice":
         modifiedPrice =
@@ -220,7 +221,7 @@ export default function RuleForm({
           originalPrice *
           (1 -
             numericAmount /
-              100);
+            100);
         break;
     }
 
@@ -252,27 +253,20 @@ export default function RuleForm({
       }
 
       const updatedRule: Rule =
-        {
-          ...rule,
-
-          name: trimmedName,
-
-          status,
-
-          applyTo,
-
-          tags,
-
-          pricingType,
-
-          value:
-            numericAmount,
-
-          updatedAt:
-            new Date()
-              .toISOString()
-              .split("T")[0],
-        };
+      {
+        ...rule,
+        name: trimmedName,
+        status,
+        applyTo,
+        tags,
+        pricingType,
+        value:
+          numericAmount,
+        updatedAt:
+          new Date()
+            .toISOString()
+            .split("T")[0],
+      };
 
       dispatch(
         updateRule(
@@ -293,20 +287,16 @@ export default function RuleForm({
 
     dispatch(
       createRule({
-        name: trimmedName,
-
-        status,
-
-        priority: 1,
-
-        applyTo,
-
-        tags,
-
-        pricingType,
-
-        value:
-          numericAmount,
+        shopId: shopData.id,
+        data: {
+          name: trimmedName,
+          status,
+          priority: 1,
+          applyTo,
+          tags,
+          pricingType,
+          value: numericAmount,
+        },
       }),
     );
 
@@ -342,7 +332,7 @@ export default function RuleForm({
     if (
       "image" in product &&
       typeof product.image ===
-        "string"
+      "string"
     ) {
       return product.image;
     }
@@ -409,11 +399,10 @@ export default function RuleForm({
     <Page
       title={
         isEdit
-          ? `Edit Custom Pricing Rule "${
-              rule?.name ??
-              ruleId ??
-              ""
-            }"`
+          ? `Edit Custom Pricing Rule "${rule?.name ??
+          ruleId ??
+          ""
+          }"`
           : "Add Custom Pricing Rule"
       }
       backAction={{
@@ -535,8 +524,8 @@ export default function RuleForm({
                   ) =>
                     setStatus(
                       value as
-                        | "enable"
-                        | "disable",
+                      | "enable"
+                      | "disable",
                     )
                   }
                 />
@@ -599,85 +588,85 @@ export default function RuleForm({
 
                 {applyTo ===
                   "tags" && (
-                  <BlockStack gap="300">
+                    <BlockStack gap="300">
 
-                    <div
-                      onKeyDown={(
-                        event: KeyboardEvent<HTMLDivElement>,
-                      ) => {
-                        if (
-                          event.key ===
-                          "Enter"
-                        ) {
-                          event.preventDefault();
+                      <div
+                        onKeyDown={(
+                          event: KeyboardEvent<HTMLDivElement>,
+                        ) => {
+                          if (
+                            event.key ===
+                            "Enter"
+                          ) {
+                            event.preventDefault();
 
-                          addTag();
-                        }
-                      }}
-                    >
-                      <TextField
-                        label="Product tags"
-                        value={
-                          tagInput
-                        }
-                        onChange={
-                          setTagInput
-                        }
-                        autoComplete="off"
-                        placeholder="Enter product tag and press Enter"
-                        connectedRight={
-                          <Button
-                            onClick={
-                              addTag
-                            }
-                          >
-                            Add
-                          </Button>
-                        }
-                      />
-                    </div>
-
-                    {tags.length >
-                      0 && (
-                      <InlineStack gap="200">
-                        {tags.map(
-                          (
-                            tag,
-                          ) => (
+                            addTag();
+                          }
+                        }}
+                      >
+                        <TextField
+                          label="Product tags"
+                          value={
+                            tagInput
+                          }
+                          onChange={
+                            setTagInput
+                          }
+                          autoComplete="off"
+                          placeholder="Enter product tag and press Enter"
+                          connectedRight={
                             <Button
-                              key={
-                                tag
-                              }
-                              onClick={() =>
-                                removeTag(
-                                  tag,
-                                )
+                              onClick={
+                                addTag
                               }
                             >
-                              {tag}{" "}
-                              ×
+                              Add
                             </Button>
-                          ),
+                          }
+                        />
+                      </div>
+
+                      {tags.length >
+                        0 && (
+                          <InlineStack gap="200">
+                            {tags.map(
+                              (
+                                tag,
+                              ) => (
+                                <Button
+                                  key={
+                                    tag
+                                  }
+                                  onClick={() =>
+                                    removeTag(
+                                      tag,
+                                    )
+                                  }
+                                >
+                                  {tag}{" "}
+                                  ×
+                                </Button>
+                              ),
+                            )}
+                          </InlineStack>
                         )}
-                      </InlineStack>
-                    )}
 
-                    <Text
-                      as="p"
-                      tone="subdued"
-                    >
-                      Enter one or
-                      more product
-                      tags. Products
-                      matching these
-                      tags will be
-                      selected when
-                      tag-based pricing
-                      is implemented.
-                    </Text>
+                      <Text
+                        as="p"
+                        tone="subdued"
+                      >
+                        Enter one or
+                        more product
+                        tags. Products
+                        matching these
+                        tags will be
+                        selected when
+                        tag-based pricing
+                        is implemented.
+                      </Text>
 
-                  </BlockStack>
-                )}
+                    </BlockStack>
+                  )}
 
               </BlockStack>
             </Card>
@@ -723,10 +712,10 @@ export default function RuleForm({
                 <TextField
                   label={
                     pricingType ===
-                    "fixedPrice"
+                      "fixedPrice"
                       ? "Price"
                       : pricingType ===
-                          "fixedDiscount"
+                        "fixedDiscount"
                         ? "Discount amount"
                         : "Discount percentage"
                   }
@@ -737,7 +726,7 @@ export default function RuleForm({
                   }
                   suffix={
                     pricingType ===
-                    "percentage"
+                      "percentage"
                       ? "%"
                       : "USD"
                   }
@@ -745,10 +734,10 @@ export default function RuleForm({
                   autoComplete="off"
                   helpText={
                     pricingType ===
-                    "fixedPrice"
+                      "fixedPrice"
                       ? "Set the final price for the selected products."
                       : pricingType ===
-                          "fixedDiscount"
+                        "fixedDiscount"
                         ? "This amount will be deducted from the original price."
                         : "This percentage will be deducted from the original price."
                   }
