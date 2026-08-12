@@ -6,6 +6,7 @@ import {
   EmptyState,
   IndexTable,
   InlineStack,
+  Link,
   Page,
   Popover,
   Text,
@@ -40,6 +41,20 @@ type SortField =
 type SortDirection =
   | "asc"
   | "desc";
+
+const formatDate = (dateString?: string) => {
+  if (!dateString) {
+    return null;
+  }
+
+  const date = new Date(dateString);
+
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date.toDateString();
+};
 
 export default function RuleList() {
   const navigate = useNavigate();
@@ -161,7 +176,7 @@ export default function RuleList() {
     }
 
     return (
-      <Badge tone="critical">
+      <Badge tone="new">
         Disable
       </Badge>
     );
@@ -536,6 +551,7 @@ export default function RuleList() {
                 id={rule.id}
                 key={rule.id}
                 position={index}
+                onClick={() => handleEdit(rule)}
                 selected={selectedRules.includes(
                   rule.id,
                 )}
@@ -578,8 +594,7 @@ export default function RuleList() {
                     as="span"
                     variant="bodyMd"
                   >
-                    {rule.createdAt ??
-                      "-"}
+                    {formatDate(rule.createdAt) ?? "-"}
                   </Text>
                 </IndexTable.Cell>
 
@@ -590,63 +605,42 @@ export default function RuleList() {
                     as="span"
                     variant="bodyMd"
                   >
-                    {rule.updatedAt ??
-                      "--"}
+                    {formatDate(rule.updatedAt) ?? "--"}
                   </Text>
                 </IndexTable.Cell>
 
                 {/* ACTION */}
-
                 <IndexTable.Cell>
-                  <InlineStack
-                    gap="200"
-                    wrap={false}
-                  >
-                    {/* EDIT */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <InlineStack gap="200" wrap={false}>
+                      {/* EDIT */}
+                      <Button
+                        icon={EditIcon}
+                        variant="secondary"
+                        size="slim"
+                        accessibilityLabel={`Edit ${rule.name}`}
+                        onClick={() => handleEdit(rule)}
+                      />
 
-                    <Button
-                      icon={EditIcon}
-                      variant="secondary"
-                      size="slim"
-                      accessibilityLabel={`Edit ${rule.name}`}
-                      onClick={() =>
-                        handleEdit(
-                          rule,
-                        )
-                      }
-                    />
+                      {/* DUPLICATE */}
+                      <Button
+                        icon={DuplicateIcon}
+                        variant="secondary"
+                        size="slim"
+                        accessibilityLabel={`Duplicate ${rule.name}`}
+                      />
 
-                    {/* DUPLICATE */}
-
-                    <Button
-                      icon={
-                        DuplicateIcon
-                      }
-                      variant="secondary"
-                      size="slim"
-                      accessibilityLabel={`Duplicate ${rule.name}`}
-                    // onClick={() =>
-                    //   handleDuplicate(
-                    //     rule,
-                    //   )
-                    // }
-                    />
-
-                    {/* DELETE */}
-
-                    <Button
-                      icon={DeleteIcon}
-                      variant="secondary"
-                      size="slim"
-                      tone="critical"
-                      accessibilityLabel={`Delete ${rule.name}`}
-                      onClick={() =>
-                        handleDelete(
-                          rule,
-                        )
-                      }
-                    />
-                  </InlineStack>
+                      {/* DELETE */}
+                      <Button
+                        icon={DeleteIcon}
+                        variant="secondary"
+                        size="slim"
+                        tone="critical"
+                        accessibilityLabel={`Delete ${rule.name}`}
+                        onClick={() => handleDelete(rule)}
+                      />
+                    </InlineStack>
+                  </div>
                 </IndexTable.Cell>
               </IndexTable.Row>
             ),

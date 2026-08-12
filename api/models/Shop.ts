@@ -20,6 +20,8 @@ export class Shop extends Model<
 
   declare accessToken: string;
 
+  declare status: "active" | "uninstalled";
+
   declare senderEmail: string | null;
 
   declare createdAt: CreationOptional<Date>;
@@ -51,6 +53,15 @@ Shop.init(
       allowNull: false,
     },
 
+    status: {
+      type: DataTypes.ENUM(
+        "active",
+        "uninstalled",
+      ),
+      allowNull: false,
+      defaultValue: "active",
+    },
+    
     senderEmail: {
       type: DataTypes.STRING(255),
       allowNull: true,
