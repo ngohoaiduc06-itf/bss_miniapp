@@ -1,10 +1,503 @@
-<script>
-console.log("Hello from Duc NH");
-</script>
+{% if request.page_type == 'product' %}
+  <style>
+    /**
+     * Hide Dawn's built-in "Sale" badge —
+     * we only want the strikethrough +
+     * red price, not the black badge.
+     */
+    .price__badge-sale {
+      display: none !important;
+    }
+  </style>
+
+  <script>
+    /**
+     * ============================================
+     * SHOPIFY DATA
+     * ============================================
+     */
+
+    const product = {{ product | json }};
+
+    const customPricingRules =
+      {{ shop.metafields.bss.custom_pricing_rules.value | default: '[]' | json }};
+
+    const moneyFormat =
+      {{ shop.money_format | json }};
+
+
+    console.log(
+      "[BSS Custom Pricing] Money Format:",
+      moneyFormat
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Product:",
+      product
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Rules:",
+      customPricingRules
+    );
+
+
+    /**
+     * ============================================
+     * CHECK RULE APPLICABILITY
+     * ============================================
+     */
+    function isRuleApplicable(
+      product,
+      rule
+    ) {
+      if (
+        rule.status !== "enable"
+      ) {
+        return false;
+      }
+
+      if (
+        rule.applyTo === "all"
+      ) {
+        return true;
+      }
+
+      if (
+        rule.applyTo === "tags"
+      ) {
+        const productTags =
+          (product.tags || [])
+            .map(
+              (tag) =>
+                tag
+                  .trim()
+                  .toLowerCase()
+            );
+
+        const ruleTags =
+          (rule.tags || [])
+            .map(
+              (tag) =>
+                tag
+                  .trim()
+                  .toLowerCase()
+            );
+
+        return ruleTags.some(
+          (ruleTag) =>
+            productTags.includes(
+              ruleTag
+            )
+        );
+      }
+
+      return false;
+    }
+
+
+    /**
+     * ============================================
+     * CALCULATE RULE PRICE
+     * ============================================
+     */
+    function calculateRulePrice(
+      originalPrice,
+      rule
+    ) {
+      if (!rule) {
+        return originalPrice;
+      }
+
+      const value =
+        Number(rule.value);
+
+      if (
+        !Number.isFinite(value)
+      ) {
+        return originalPrice;
+      }
+
+      switch (
+        rule.pricingType
+      ) {
+        case "fixedPrice":
+          return Math.max(
+            0,
+            value
+          );
+
+        case "fixedDiscount":
+          return Math.max(
+            0,
+            originalPrice -
+              value
+          );
+
+        case "percentage":
+          return Math.max(
+            0,
+            originalPrice *
+              (
+                1 -
+                value / 100
+              )
+          );
+
+        default:
+          return originalPrice;
+      }
+    }
+
+
+    /**
+     * ============================================
+     * FIND HIGHEST PRIORITY RULE
+     * ============================================
+     */
+    function getApplicableRule(
+      product,
+      rules
+    ) {
+      return (
+        rules
+          .filter(
+            (rule) =>
+              isRuleApplicable(
+                product,
+                rule
+              )
+          )
+          .sort(
+            (a, b) =>
+              Number(
+                a.priority
+              ) -
+              Number(
+                b.priority
+              )
+          )[0] || null
+      );
+    }
+
+
+    /**
+     * ============================================
+     * MONEY FORMAT
+     * ============================================
+     */
+    function formatMoney(
+      cents,
+      format
+    ) {
+      const amount =
+        Number(cents);
+
+      if (!Number.isFinite(amount)) {
+        return "";
+      }
+
+      const value =
+        amount / 100;
+
+      const amountWithDecimals =
+        value.toFixed(2);
+
+      const amountWithoutDecimals =
+        Math.round(value).toString();
+
+      const amountWithComma =
+        amountWithDecimals.replace(
+          ".",
+          ","
+        );
+
+      const amountWithoutDecimalsWithComma =
+        amountWithoutDecimals.replace(
+          ".",
+          ","
+        );
+
+      return format
+        .replace(
+          /\{\{\s*amount_with_comma_separator\s*\}\}/,
+          amountWithComma
+        )
+        .replace(
+          /\{\{\s*amount_no_decimals_with_comma_separator\s*\}\}/,
+          amountWithoutDecimalsWithComma
+        )
+        .replace(
+          /\{\{\s*amount_no_decimals\s*\}\}/,
+          amountWithoutDecimals
+        )
+        .replace(
+          /\{\{\s*amount\s*\}\}/,
+          amountWithDecimals
+        );
+    }
+
+
+    /**
+     * ============================================
+     * FIND APPLICABLE RULES
+     * ============================================
+     */
+
+    const applicableRules =
+      customPricingRules.filter(
+        (rule) =>
+          isRuleApplicable(
+            product,
+            rule
+          )
+      );
+
+
+    /**
+     * ============================================
+     * SELECT HIGHEST PRIORITY RULE
+     * ============================================
+     */
+
+    const applicableRule =
+      getApplicableRule(
+        product,
+        customPricingRules
+      );
+
+
+    /**
+     * ============================================
+     * GET ORIGINAL PRICE
+     * ============================================
+     */
+    const originalPrice =
+      Number(
+        product
+          ?.variants
+          ?.[0]
+          ?.price
+      );
+
+
+    /**
+     * ============================================
+     * CALCULATE DISCOUNTED PRICE
+     * ============================================
+     */
+
+    const discountedPrice =
+      calculateRulePrice(
+        originalPrice,
+        applicableRule
+      );
+
+
+    /**
+     * ============================================
+     * FORMAT PRICES
+     * ============================================
+     */
+    const originalPriceInCents =
+      originalPrice;
+
+    const discountedPriceInCents =
+      discountedPrice;
+
+    const formattedOriginalPrice =
+      formatMoney(
+        originalPriceInCents,
+        moneyFormat
+      );
+
+    const formattedDiscountedPrice =
+      formatMoney(
+        discountedPriceInCents,
+        moneyFormat
+      );
+
+
+    /**
+     * ============================================
+     * UPDATE MAIN PRODUCT PRICE
+     * ============================================
+     *
+     * Targets Dawn's existing price markup:
+     *
+     * .price
+     *   .price__regular          -> hidden
+     *   .price__sale             -> shown
+     *     s.price-item--regular  -> ORIGINAL price (strikethrough)
+     *     .price-item--sale      -> DISCOUNTED price, forced red
+     *
+     * The black "Sale" badge (.price__badge-sale)
+     * is hidden globally via CSS above.
+     *
+     * Runs only once per page load.
+     */
+    function setSalePriceOnContainer(
+      priceContainer
+    ) {
+      const regularBlock =
+        priceContainer.querySelector(
+          ".price__regular"
+        );
+
+      const saleBlock =
+        priceContainer.querySelector(
+          ".price__sale"
+        );
+
+      if (!saleBlock) {
+        console.warn(
+          "[BSS Custom Pricing] .price__sale block not found in this container."
+        );
+
+        return false;
+      }
+
+      const compareEl =
+        saleBlock.querySelector(
+          "s.price-item--regular"
+        );
+
+      const saleEl =
+        saleBlock.querySelector(
+          ".price-item--sale"
+        );
+
+      if (compareEl) {
+        compareEl.textContent =
+          formattedOriginalPrice;
+      }
+
+      if (saleEl) {
+        saleEl.textContent =
+          formattedDiscountedPrice;
+
+        /**
+         * Force red regardless of theme CSS.
+         */
+        saleEl.style.color =
+          "#d82c0d";
+      }
+
+      saleBlock.classList.remove("hidden");
+      saleBlock.style.removeProperty(
+        "display"
+      );
+
+      if (regularBlock) {
+        regularBlock.classList.add("hidden");
+        regularBlock.style.display = "none";
+      }
+
+      priceContainer.classList.add(
+        "price--on-sale"
+      );
+
+      console.log(
+        "[BSS Custom Pricing] Applied sale price:",
+        {
+          original: formattedOriginalPrice,
+          sale: formattedDiscountedPrice,
+        }
+      );
+
+      return true;
+    }
+
+    function updateMainProductPrice() {
+      if (!applicableRule) {
+        console.log(
+          "[BSS Custom Pricing] No applicable rule. Price unchanged."
+        );
+
+        return;
+      }
+
+      if (
+        discountedPriceInCents >=
+        originalPriceInCents
+      ) {
+        console.log(
+          "[BSS Custom Pricing] Discounted price is not lower than original. Skipping sale display."
+        );
+
+        return;
+      }
+
+      const priceContainers =
+        document.querySelectorAll(
+          ".price"
+        );
+
+      if (priceContainers.length === 0) {
+        console.warn(
+          "[BSS Custom Pricing] No .price container found on the page."
+        );
+
+        return;
+      }
+
+      priceContainers.forEach(
+        (priceContainer) => {
+          setSalePriceOnContainer(
+            priceContainer
+          );
+        }
+      );
+    }
+
+    if (!window.__bssPricingApplied) {
+      window.__bssPricingApplied = true;
+      updateMainProductPrice();
+    }
+
+
+    /**
+     * ============================================
+     * DEBUG INFORMATION
+     * ============================================
+     */
+
+    console.log(
+      "[BSS Custom Pricing] Applicable Rules:",
+      applicableRules
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Selected Rule:",
+      applicableRule
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Original Price:",
+      originalPrice
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Discounted Price:",
+      discountedPrice
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Formatted Original Price:",
+      formattedOriginalPrice
+    );
+
+    console.log(
+      "[BSS Custom Pricing] Formatted Discounted Price:",
+      formattedDiscountedPrice
+    );
+  </script>
+{% endif %}
+
 
 {% schema %}
 {
-  "name": "Duc NH Embed",
+  "name": "Custom Pricing",
   "target": "body",
   "settings": []
 }

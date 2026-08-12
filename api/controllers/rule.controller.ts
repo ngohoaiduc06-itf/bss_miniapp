@@ -1,7 +1,24 @@
 import type { Context } from "koa";
 import { Op } from "sequelize";
 import { Rule } from "../models";
+import {
+  syncRulesToShopMetafield,
+} from "../services/shopify.service";
 
+function serializeRules(
+  rules: Rule[],
+) {
+  return rules.map((rule) => ({
+    id: rule.id,
+    name: rule.name,
+    status: rule.status,
+    priority: rule.priority,
+    applyTo: rule.applyTo,
+    tags: rule.tags ?? [],
+    pricingType: rule.pricingType,
+    value: Number(rule.value),
+  }));
+}
 
 // GET /api/rules?shopId=1&search=VIP
 export async function getRules(
@@ -77,9 +94,9 @@ export async function createRule(
     applyTo?: "all" | "tags";
     tags?: string[];
     pricingType?:
-      | "fixedPrice"
-      | "fixedDiscount"
-      | "percentage";
+    | "fixedPrice"
+    | "fixedDiscount"
+    | "percentage";
     value?: number;
   };
 
@@ -132,6 +149,22 @@ export async function createRule(
       value,
     });
 
+  const rules =
+    await Rule.findAll({
+      where: {
+        shopId,
+      },
+      order: [
+        ["priority", "ASC"],
+        ["createdAt", "DESC"],
+      ],
+    });
+
+  await syncRulesToShopMetafield(
+    shopId,
+    serializeRules(rules),
+  );
+
   ctx.status = 201;
 
   ctx.body = {
@@ -164,16 +197,16 @@ export async function updateRule(
   const body = ctx.request.body as Partial<{
     name: string;
     status:
-      | "enable"
-      | "disable";
+    | "enable"
+    | "disable";
     applyTo:
-      | "all"
-      | "tags";
+    | "all"
+    | "tags";
     tags: string[];
     pricingType:
-      | "fixedPrice"
-      | "fixedDiscount"
-      | "percentage";
+    | "fixedPrice"
+    | "fixedDiscount"
+    | "percentage";
     value: number;
   }>;
 
@@ -204,6 +237,22 @@ export async function updateRule(
 
   await rule.save();
 
+  const rules =
+    await Rule.findAll({
+      where: {
+        shopId: rule.shopId,
+      },
+      order: [
+        ["priority", "ASC"],
+        ["createdAt", "DESC"],
+      ],
+    });
+
+  await syncRulesToShopMetafield(
+    rule.shopId,
+    serializeRules(rules),
+  );
+
   ctx.body = {
     success: true,
     data: rule,
@@ -231,7 +280,26 @@ export async function deleteRule(
     return;
   }
 
+  const shopId =
+    rule.shopId;
+
   await rule.destroy();
+
+  const rules =
+    await Rule.findAll({
+      where: {
+        shopId,
+      },
+      order: [
+        ["priority", "ASC"],
+        ["createdAt", "DESC"],
+      ],
+    });
+
+  await syncRulesToShopMetafield(
+    shopId,
+    serializeRules(rules),
+  );
 
   ctx.status = 204;
 }

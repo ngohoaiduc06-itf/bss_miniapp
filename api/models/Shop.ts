@@ -20,9 +20,9 @@ export class Shop extends Model<
 
   declare accessToken: string;
 
-  declare status: "active" | "uninstalled";
-
   declare senderEmail: string | null;
+  
+  declare status: "active" | "uninstalled";
 
   declare createdAt: CreationOptional<Date>;
 

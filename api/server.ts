@@ -11,6 +11,7 @@ import {
 
 import shopRoutes from "./routes/shop.routes";
 import ruleRoutes from "./routes/rule.routes";
+import productRoutes from "./routes/product.routes";
 
 const app = new Koa();
 
@@ -58,6 +59,15 @@ app.use(
 app.use(
   ruleRoutes.allowedMethods(),
 );
+
+app.use(
+  productRoutes.routes(),
+);
+
+app.use(
+  productRoutes.allowedMethods(),
+);
+
 
 app.use((ctx) => {
   if (ctx.path === "/health") {

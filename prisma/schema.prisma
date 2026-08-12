@@ -38,7 +38,7 @@ model Shop {
   shopDomain  String   @unique
   shopName    String
   accessToken String
-
+  status String @default("active") 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
