@@ -1,17 +1,17 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 
 export interface ShopData {
-  id: number;
+  id: number | null;
   name: string;
   domain: string;
   senderEmail: string;
 }
 
 const initialState: ShopData = {
-  id: 1,
-  name: "SBC.B-TS - Duc NH",
-  domain: "dev-duc-nh.myshopify.com",
-  senderEmail: "duchn@bsscommerce.com",
+  id: null,
+  name: "",
+  domain: "",
+  senderEmail: "",
 };
 
 const shopDataSlice = createSlice({

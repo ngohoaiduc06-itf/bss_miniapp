@@ -14,68 +14,118 @@ type UpdateShopBody = {
   senderEmail?: string;
 };
 
+// export async function createShop(ctx: Context) {
+//   const {
+//     shopDomain,
+//     shopName,
+//     accessToken,
+//     senderEmail,
+//   } = ctx.request.body as CreateShopBody;
+
+//   if (
+//     !shopDomain ||
+//     !shopName ||
+//     !accessToken
+//   ) {
+//     ctx.status = 400;
+
+//     ctx.body = {
+//       success: false,
+//       message:
+//         "shopDomain, shopName and accessToken are required",
+//     };
+
+//     return;
+//   }
+
+//   const existingShop = await Shop.findOne({
+//     where: {
+//       shopDomain,
+//     },
+//   });
+
+//   if (existingShop) {
+//     ctx.status = 409;
+
+//     ctx.body = {
+//       success: false,
+//       message: "Shop already exists",
+//     };
+
+//     return;
+//   }
+
+//   const shop = await Shop.create({
+//     shopDomain,
+//     shopName,
+//     accessToken,
+//     senderEmail: senderEmail ?? null,
+//   });
+
+//   ctx.status = 201;
+
+//   ctx.body = {
+//     success: true,
+
+//     data: {
+//       id: shop.id,
+//       shopDomain: shop.shopDomain,
+//       shopName: shop.shopName,
+//       senderEmail: shop.senderEmail,
+//     },
+//   };
+// }
+
 export async function createShop(ctx: Context) {
+  const body = ctx.request.body as {
+    shopDomain?: string;
+    shopName?: string;
+    accessToken?: string;
+  };
+
   const {
     shopDomain,
     shopName,
     accessToken,
-    senderEmail,
-  } = ctx.request.body as CreateShopBody;
+  } = body;
 
-  if (
-    !shopDomain ||
-    !shopName ||
-    !accessToken
-  ) {
+  if (!shopDomain || !shopName || !accessToken) {
     ctx.status = 400;
 
     ctx.body = {
       success: false,
-      message:
-        "shopDomain, shopName and accessToken are required",
+      message: "Missing required fields",
     };
 
     return;
   }
 
-  const existingShop = await Shop.findOne({
-    where: {
-      shopDomain,
-    },
-  });
+  const [shop, created] =
+    await Shop.findOrCreate({
+      where: {
+        shopDomain,
+      },
+      defaults: {
+        shopDomain,
+        shopName,
+        accessToken,
+      },
+    });
 
-  if (existingShop) {
-    ctx.status = 409;
+  if (!created) {
+    shop.shopName = shopName;
+    shop.accessToken = accessToken;
 
-    ctx.body = {
-      success: false,
-      message: "Shop already exists",
-    };
-
-    return;
+    await shop.save();
   }
 
-  const shop = await Shop.create({
-    shopDomain,
-    shopName,
-    accessToken,
-    senderEmail: senderEmail ?? null,
-  });
-
-  ctx.status = 201;
+  ctx.status = created ? 201 : 200;
 
   ctx.body = {
     success: true,
-
-    data: {
-      id: shop.id,
-      shopDomain: shop.shopDomain,
-      shopName: shop.shopName,
-      senderEmail: shop.senderEmail,
-    },
+    data: shop,
   };
 }
-
 // GET /api/shops/:shopDomain
 export async function getShop(ctx: Context) {
   const { shopDomain } = ctx.params;

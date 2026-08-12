@@ -258,6 +258,11 @@ export default function RuleForm({
       return;
     }
 
+    if (!shopData.id) {
+      console.error("Cannot save rule: shop data not loaded yet");
+      return;
+    }
+
     /**
      * EDIT
      */

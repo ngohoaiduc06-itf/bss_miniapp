@@ -4,56 +4,113 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useFetcher } from "react-router";
+import { useFetcher, useLoaderData } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
-import prisma from "app/db.server";
+import {
+  useAppDispatch,
+} from "../store/hooks";
+
+import {
+  updateShopData,
+} from "../store/slices/shopDataSlice";
 
 // Rule
 import RuleList from "../components/rule-list/RuleList";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-const { admin, session } = await authenticate.admin(request);
+// export const loader = async ({ request }: LoaderFunctionArgs) => {
+//   await authenticate.admin(request);
+// const { admin, session } = await authenticate.admin(request);
 
-  const response = await admin.graphql(`query {
-      shop {
-        id
-        name
+//   const response = await admin.graphql(`query {
+//       shop {
+//         id
+//         name
+//       }
+//     }`);
+
+//   const result = await response.json();
+
+//   if (!session.accessToken) {
+//     throw new Error("Access token is missing");
+//   }
+//   return null;
+// };
+
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL ??
+  "http://localhost:3001";
+
+export const loader = async ({
+  request,
+}: LoaderFunctionArgs) => {
+  const { admin, session } =
+    await authenticate.admin(request);
+
+  const response =
+    await admin.graphql(`
+      query {
+        shop {
+          id
+          name
+        }
       }
-    }`);
+    `);
 
-  const result = await response.json();
+  const result =
+    await response.json();
+
+  const shop =
+    result.data.shop;
 
   if (!session.accessToken) {
-    throw new Error("Access token is missing");
+    throw new Error(
+      "Access token is missing",
+    );
   }
 
-  await prisma.shop.upsert({
-    where: {
-      shopDomain: session.shop,
-    },
-    update: {
-      shopName: result.data.shop.name,
-      accessToken: session.accessToken,
-    },
-    create: {
-      id: result.data.shop.id,
-      shopDomain: session.shop,
-      shopName: result.data.shop.name,
-      accessToken: session.accessToken,
-    },
-  });
+  const shopResponse =
+    await fetch(
+      `${API_BASE_URL}/api/shops`,
+      {
+        method: "POST",
 
-  // console.log("===== SHOP INFO =====");
-  // console.log({
-  //   id: result.data.shop.id,
-  //   name: result.data.shop.name,
-  //   token: session.accessToken,
-  //   shop: session.shop,
-  // });
-  return null;
+        headers: {
+          "Content-Type":
+            "application/json",
+        },
+
+        body: JSON.stringify({
+          shopDomain:
+            session.shop,
+
+          shopName:
+            shop.name,
+
+          accessToken:
+            session.accessToken,
+        }),
+      },
+    );
+
+  const shopResult =
+    await shopResponse.json();
+
+  if (
+    !shopResponse.ok ||
+    !shopResult.success
+  ) {
+    throw new Error(
+      `Failed to save shop: ${JSON.stringify(
+        shopResult,
+      )}`,
+    );
+  }
+
+  return {
+    shop: shopResult.data,
+  };
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
@@ -168,25 +225,74 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   };
 };
 
-export default function Index() {
-  const fetcher = useFetcher<typeof action>();
+// export default function Index() {
+//   const fetcher = useFetcher<typeof action>();
 
-  const shopify = useAppBridge();
+//   const shopify = useAppBridge();
+//   const isLoading =
+//     ["loading", "submitting"].includes(fetcher.state) &&
+//     fetcher.formMethod === "POST";
+
+//   useEffect(() => {
+//     if (fetcher.data?.product?.id) {
+//       shopify.toast.show("Product created");
+//     }
+//   }, [fetcher.data?.product?.id, shopify]);
+
+//   const generateProduct = () => fetcher.submit({}, { method: "POST" });
+
+//   return (
+//     <RuleList />
+//   );
+// }
+
+
+export default function Index() {
+  const { shop } =
+    useLoaderData<typeof loader>();
+
+  const dispatch =
+    useAppDispatch();
+
+  const fetcher =
+    useFetcher<typeof action>();
+
+  const shopify =
+    useAppBridge();
+
+  useEffect(() => {
+    dispatch(
+      updateShopData({
+        id: shop.id,
+        name: shop.shopName,
+        domain: shop.shopDomain,
+      }),
+    );
+  }, [
+    shop,
+    dispatch,
+  ]);
+
   const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
+    ["loading", "submitting"].includes(
+      fetcher.state,
+    ) &&
     fetcher.formMethod === "POST";
 
   useEffect(() => {
-    if (fetcher.data?.product?.id) {
-      shopify.toast.show("Product created");
+    if (
+      fetcher.data?.product?.id
+    ) {
+      shopify.toast.show(
+        "Product created",
+      );
     }
-  }, [fetcher.data?.product?.id, shopify]);
+  }, [
+    fetcher.data?.product?.id,
+    shopify,
+  ]);
 
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
-
-  return (
-    <RuleList />
-  );
+  return <RuleList />;
 }
 
 export const headers: HeadersFunction = (headersArgs) => {
