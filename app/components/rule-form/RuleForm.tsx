@@ -51,6 +51,18 @@ type PricingType =
   | "fixedDiscount"
   | "percentage";
 
+type Product = {
+  id: string;
+  title: string;
+  handle: string;
+  status: string;
+  tags: string[];
+  image: string | null;
+  imageAlt: string;
+  price: number;
+  variantId: string | null;
+};
+
 export default function RuleForm({
   mode,
   ruleId,
@@ -101,6 +113,15 @@ export default function RuleForm({
     useState<string[]>(
       rule?.tags ?? [],
     );
+
+  const [products, setProducts] =
+    useState<Product[]>([]);
+
+  const [productsLoading, setProductsLoading] =
+    useState(false);
+
+  const [productsError, setProductsError] =
+    useState<string | null>(null);
 
   const [
     pricingType,
@@ -171,6 +192,49 @@ export default function RuleForm({
     rule,
     dispatch,
   ]);
+
+  useEffect(() => {
+    if (!shopData.id) {
+      return;
+    }
+
+    async function loadProducts() {
+      try {
+        setProductsLoading(true);
+        setProductsError(null);
+
+        const response = await fetch(
+          `http://localhost:3001/api/products?shopId=${shopData.id}`,
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ||
+            "Failed to load products",
+          );
+        }
+
+        setProducts(result.data);
+      } catch (error) {
+        console.error(
+          "Failed to load Shopify products:",
+          error,
+        );
+
+        setProductsError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load products",
+        );
+      } finally {
+        setProductsLoading(false);
+      }
+    }
+
+    loadProducts();
+  }, [shopData.id]);
 
   const addTag = () => {
     const newTag =
@@ -351,17 +415,9 @@ export default function RuleForm({
   ];
 
   const getProductImage = (
-    product: (typeof mockProducts)[number],
+    product: Product,
   ): string | undefined => {
-    if (
-      "image" in product &&
-      typeof product.image ===
-      "string"
-    ) {
-      return product.image;
-    }
-
-    return undefined;
+    return product.image ?? undefined;
   };
 
   if (
@@ -823,7 +879,21 @@ export default function RuleForm({
 
               {showProductPricingDetails && (
                 <div className="rule-form-product-table">
+                  {productsLoading && (
+                    <Box padding="400">
+                      <Text as="p" tone="subdued">
+                        Loading products...
+                      </Text>
+                    </Box>
+                  )}
 
+                  {productsError && (
+                    <Box padding="400">
+                      <Text as="p" tone="critical">
+                        {productsError}
+                      </Text>
+                    </Box>
+                  )}
                   <IndexTable
                     condensed={
                       mdDown
@@ -835,7 +905,7 @@ export default function RuleForm({
                         "products",
                     }}
                     itemCount={
-                      mockProducts.length
+                      products.length
                     }
                     headings={[
                       {
@@ -867,120 +937,119 @@ export default function RuleForm({
                       false
                     }
                   >
-                    {mockProducts.map(
-                      (
-                        product,
-                        index,
-                      ) => {
-                        const modifiedPrice =
-                          getModifiedPrice(
-                            product.price,
-                          );
+                    {products.map((
+                      product,
+                      index,
+                    ) => {
+                      const modifiedPrice =
+                        getModifiedPrice(
+                          product.price,
+                        );
 
-                        const productImage =
-                          getProductImage(
-                            product,
-                          );
+                      const productImage =
+                        getProductImage(
+                          product,
+                        );
 
-                        return (
-                          <IndexTable.Row
-                            id={
-                              product.id
-                            }
-                            key={
-                              product.id
-                            }
-                            position={
-                              index
-                            }
-                          >
+                      return (
+                        <IndexTable.Row
+                          id={
+                            product.id
+                          }
+                          key={
+                            product.id
+                          }
+                          position={
+                            index
+                          }
+                        >
 
-                            {/* ID */}
+                          {/* ID */}
 
-                            <IndexTable.Cell>
+                          <IndexTable.Cell>
+                            <Text
+                              as="span"
+                              variant="bodySm"
+                              tone="subdued"
+                            >
+                              {
+                                (product.id).split("/")[4]
+                              }
+                            </Text>
+                          </IndexTable.Cell>
+
+                          {/* IMAGE */}
+
+                          <IndexTable.Cell>
+                            <Thumbnail
+                              source={
+                                productImage ??
+                                "https://cdn.shopify.com/s/files/1/0757/9955/files/placeholder-images-image_large.png"
+                              }
+                              alt={
+                                product.title
+                              }
+                              size="large"
+                            />
+                          </IndexTable.Cell>
+
+                          {/* TITLE */}
+
+                          <IndexTable.Cell>
+                            <Text
+                              as="span"
+                              fontWeight="semibold"
+                            >
+                              {
+                                product.title
+                              }
+                            </Text>
+                          </IndexTable.Cell>
+
+                          {/* ORIGINAL PRICE */}
+
+                          <IndexTable.Cell>
+                            <div
+                              style={{
+                                textAlign:
+                                  "right",
+                              }}
+                            >
                               <Text
                                 as="span"
-                                variant="bodySm"
                                 tone="subdued"
                               >
-                                {
-                                  product.id
-                                }
+                                $
+                                {product.price.toFixed(
+                                  2,
+                                )}
                               </Text>
-                            </IndexTable.Cell>
+                            </div>
+                          </IndexTable.Cell>
 
-                            {/* IMAGE */}
+                          {/* MODIFIED PRICE */}
 
-                            <IndexTable.Cell>
-                              <Thumbnail
-                                source={
-                                  productImage ??
-                                  "https://cdn.shopify.com/s/files/1/0757/9955/files/placeholder-images-image_large.png"
-                                }
-                                alt={
-                                  product.title
-                                }
-                                size="small"
-                              />
-                            </IndexTable.Cell>
-
-                            {/* TITLE */}
-
-                            <IndexTable.Cell>
+                          <IndexTable.Cell>
+                            <div
+                              style={{
+                                textAlign:
+                                  "right",
+                              }}
+                            >
                               <Text
                                 as="span"
-                                fontWeight="semibold"
                               >
-                                {
-                                  product.title
-                                }
+                                $
+                                {modifiedPrice.toFixed(
+                                  2,
+                                )}
                               </Text>
-                            </IndexTable.Cell>
+                            </div>
+                          </IndexTable.Cell>
 
-                            {/* ORIGINAL PRICE */}
-
-                            <IndexTable.Cell>
-                              <div
-                                style={{
-                                  textAlign:
-                                    "right",
-                                }}
-                              >
-                                <Text
-                                  as="span"
-                                  tone="subdued"
-                                >
-                                  $
-                                  {product.price.toFixed(
-                                    2,
-                                  )}
-                                </Text>
-                              </div>
-                            </IndexTable.Cell>
-
-                            {/* MODIFIED PRICE */}
-
-                            <IndexTable.Cell>
-                              <div
-                                style={{
-                                  textAlign:
-                                    "right",
-                                }}
-                              >
-                                <Text
-                                  as="span"
-                                >
-                                  $
-                                  {modifiedPrice.toFixed(
-                                    2,
-                                  )}
-                                </Text>
-                              </div>
-                            </IndexTable.Cell>
-
-                          </IndexTable.Row>
-                        );
-                      },
+                        </IndexTable.Row>
+                      );
+                    },
                     )}
                   </IndexTable>
 
