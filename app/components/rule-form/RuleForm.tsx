@@ -9,6 +9,7 @@ import {
   Page,
   Select,
   Text,
+  Pagination,
   TextField,
   Thumbnail,
   useBreakpoints,
@@ -16,6 +17,7 @@ import {
 
 import {
   useEffect,
+  useMemo,
   useState,
   type KeyboardEvent,
 } from "react";
@@ -122,6 +124,20 @@ export default function RuleForm({
 
   const [productsError, setProductsError] =
     useState<string | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  // SETUP PAGINATION
+  const PRODUCTS_PER_PAGE = 10;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(products.length / PRODUCTS_PER_PAGE),
+  );
+
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return products.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
+  }, [products, currentPage]);
 
   const [
     pricingType,
@@ -236,6 +252,9 @@ export default function RuleForm({
     loadProducts();
   }, [shopData.id]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [products.length]);
   const addTag = () => {
     const newTag =
       tagInput.trim();
@@ -937,7 +956,7 @@ export default function RuleForm({
                       false
                     }
                   >
-                    {products.map((
+                    {paginatedProducts.map((
                       product,
                       index,
                     ) => {
@@ -1052,6 +1071,25 @@ export default function RuleForm({
                     },
                     )}
                   </IndexTable>
+                  
+                  {/* Pagination */}
+                  {products.length > PRODUCTS_PER_PAGE && (
+                    <Box padding="400">
+                      <InlineStack align="center">
+                        <Pagination
+                          hasPrevious={currentPage > 1}
+                          onPrevious={() =>
+                            setCurrentPage((page) => Math.max(1, page - 1))
+                          }
+                          hasNext={currentPage < totalPages}
+                          onNext={() =>
+                            setCurrentPage((page) => Math.min(totalPages, page + 1))
+                          }
+                          label={`Page ${currentPage} of ${totalPages}`}
+                        />
+                      </InlineStack>
+                    </Box>
+                  )}
 
                 </div>
               )}
