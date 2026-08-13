@@ -8,7 +8,7 @@ export type PricingType =
   | "percentage";
 
 export interface Rule {
-  // shopId: string;
+  // shopId: number;
   id: string;
   name: string;
   status: RuleStatus;

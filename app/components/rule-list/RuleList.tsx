@@ -206,33 +206,27 @@ export default function RuleList() {
       `/app/rules/${rule.id}/edit`,
     );
   };
-
-  // const handleDuplicate = (rule: Rule) => {
-  //   dispatch(
-  //     duplicateRule(rule.id),
-  //   );
-  // };
-
-  const handleDelete = (rule: Rule) => {
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete "${rule.name}"?`,
-      );
+  const handleDelete = async (rule: Rule) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${rule.name}"?`,
+    );
 
     if (!confirmed) {
       return;
     }
 
-    dispatch(deleteRule(rule.id));
-
-    setSelectedRules(
-      (currentSelected) =>
-        currentSelected.filter(
-          (id) => id !== rule.id,
-        ),
-    );
+    try {
+      await dispatch(deleteRule(rule.id)).unwrap();
+      if (shopData.id) {
+        dispatch(fetchRules(shopData.id));
+      }
+      setSelectedRules((currentSelected) =>
+        currentSelected.filter((id) => id !== rule.id),
+      );
+    } catch (error) {
+      console.error("Xóa rule thất bại:", error);
+    }
   };
-
   const handleAddRule = () => {
     console.log("Hello Word")
     navigate("/app/rules/new");

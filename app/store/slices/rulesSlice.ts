@@ -227,8 +227,8 @@ const rulesSlice = createSlice({
           const index =
             state.items.findIndex(
               (rule) =>
-                rule.id ===
-                action.payload.id,
+                String(rule.id) ===
+                String(action.payload.id),
             );
 
           if (index !== -1) {
@@ -269,8 +269,8 @@ const rulesSlice = createSlice({
           state.items =
             state.items.filter(
               (rule) =>
-                rule.id !==
-                action.payload,
+                String(rule.id) !==
+                String(action.payload),
             );
         },
       )

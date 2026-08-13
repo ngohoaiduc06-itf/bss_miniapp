@@ -16,27 +16,7 @@ import {
   updateShopData,
 } from "../store/slices/shopDataSlice";
 
-// Rule
 import RuleList from "../components/rule-list/RuleList";
-
-// export const loader = async ({ request }: LoaderFunctionArgs) => {
-//   await authenticate.admin(request);
-// const { admin, session } = await authenticate.admin(request);
-
-//   const response = await admin.graphql(`query {
-//       shop {
-//         id
-//         name
-//       }
-//     }`);
-
-//   const result = await response.json();
-
-//   if (!session.accessToken) {
-//     throw new Error("Access token is missing");
-//   }
-//   return null;
-// };
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
@@ -224,28 +204,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     metaobject: metaobjectResponseJson!.data!.metaobjectUpsert!.metaobject,
   };
 };
-
-// export default function Index() {
-//   const fetcher = useFetcher<typeof action>();
-
-//   const shopify = useAppBridge();
-//   const isLoading =
-//     ["loading", "submitting"].includes(fetcher.state) &&
-//     fetcher.formMethod === "POST";
-
-//   useEffect(() => {
-//     if (fetcher.data?.product?.id) {
-//       shopify.toast.show("Product created");
-//     }
-//   }, [fetcher.data?.product?.id, shopify]);
-
-//   const generateProduct = () => fetcher.submit({}, { method: "POST" });
-
-//   return (
-//     <RuleList />
-//   );
-// }
-
 
 export default function Index() {
   const { shop } =

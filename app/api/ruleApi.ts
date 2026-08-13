@@ -1,127 +1,25 @@
 import type { Rule } from "../types/rule";
+import { apiRequest } from "./apiClient";
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL ??
-  "http://localhost:3001";
+export const getRules = (shopId: number) =>
+  apiRequest<Rule[]>(`/api/rules?shopId=${shopId}`);
 
-type ApiResponse<T> = {
-  success: boolean;
-  data: T;
-  message?: string;
-};
+export const getRule = (id: string) =>
+  apiRequest<Rule>(`/api/rules/${id}`);
 
-async function handleResponse<T>(
-  response: Response,
-): Promise<T> {
-  const result =
-    (await response.json()) as
-      | ApiResponse<T>
-      | {
-          success: false;
-          message?: string;
-        };
+export const createRule = (
+  data: Omit<Rule, "id" | "createdAt" | "updatedAt"> & { shopId: number }
+) =>
+  apiRequest<Rule>("/api/rules", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
-  if (!response.ok || !result.success) {
-    throw new Error(
-      result.message ||
-        `Request failed: ${response.status}`,
-    );
-  }
+export const updateRule = (id: string, data: Partial<Rule>) =>
+  apiRequest<Rule>(`/api/rules/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 
-  return (result as ApiResponse<T>).data;
-}
-
-/**
- * GET /api/rules?shopId=1
- */
-export async function getRules(
-  shopId: number,
-): Promise<Rule[]> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/rules?shopId=${shopId}`,
-  );
-
-  return handleResponse<Rule[]>(response);
-}
-
-/**
- * GET /api/rules/:id
- */
-export async function getRule(
-  id: string,
-): Promise<Rule> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/rules/${id}`,
-  );
-
-  return handleResponse<Rule>(response);
-}
-
-/**
- * POST /api/rules
- */
-export async function createRule(
-  data: Omit<
-    Rule,
-    "id" | "createdAt" | "updatedAt"
-  > & {
-    shopId: number;
-  },
-): Promise<Rule> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/rules`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  return handleResponse<Rule>(response);
-}
-
-/**
- * PUT /api/rules/:id
- */
-export async function updateRule(
-  id: string,
-  data: Partial<Rule>,
-): Promise<Rule> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/rules/${id}`,
-    {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    },
-  );
-
-  return handleResponse<Rule>(response);
-}
-
-/**
- * DELETE /api/rules/:id
- */
-export async function deleteRule(
-  id: string,
-): Promise<void> {
-  const response = await fetch(
-    `${API_BASE_URL}/api/rules/${id}`,
-    {
-      method: "DELETE",
-    },
-  );
-
-  if (!response.ok) {
-    const result = await response.json();
-
-    throw new Error(
-      result.message ||
-        `Request failed: ${response.status}`,
-    );
-  }
-}
+export const deleteRule = (id: string) =>
+  apiRequest<void>(`/api/rules/${id}`, { method: "DELETE" });

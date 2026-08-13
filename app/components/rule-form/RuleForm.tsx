@@ -4,27 +4,37 @@ import {
   Button,
   Card,
   ChoiceList,
-  IndexTable,
   InlineStack,
   Page,
   Select,
   Text,
-  Pagination,
   TextField,
-  Thumbnail,
   useBreakpoints,
 } from "@shopify/polaris";
 
+
+import {
+  getProducts,
+} from "../../api/productApi";
+
+import type {
+  Product,
+} from "../../types/product";
+
+import ProductPricingTable from "./ProductPricingTable";
+
+import type {
+  ApplyToType,
+  PricingType,
+} from "../../types/rule";
+
 import {
   useEffect,
-  useMemo,
   useState,
   type KeyboardEvent,
 } from "react";
 
 import { useNavigate } from "react-router";
-
-import { mockProducts } from "../../mock/products";
 
 import type { Rule } from "../../types/rule";
 
@@ -42,27 +52,6 @@ import {
 type RuleFormProps = {
   mode: "create" | "edit";
   ruleId?: string;
-};
-
-type ApplyToType =
-  | "all"
-  | "tags";
-
-type PricingType =
-  | "fixedPrice"
-  | "fixedDiscount"
-  | "percentage";
-
-type Product = {
-  id: string;
-  title: string;
-  handle: string;
-  status: string;
-  tags: string[];
-  image: string | null;
-  imageAlt: string;
-  price: number;
-  variantId: string | null;
 };
 
 export default function RuleForm({
@@ -124,20 +113,6 @@ export default function RuleForm({
 
   const [productsError, setProductsError] =
     useState<string | null>(null);
-
-  const [currentPage, setCurrentPage] = useState(1);
-  // SETUP PAGINATION
-  const PRODUCTS_PER_PAGE = 10;
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(products.length / PRODUCTS_PER_PAGE),
-  );
-
-  const paginatedProducts = useMemo(() => {
-    const startIndex = (currentPage - 1) * PRODUCTS_PER_PAGE;
-    return products.slice(startIndex, startIndex + PRODUCTS_PER_PAGE);
-  }, [products, currentPage]);
 
   const [
     pricingType,
@@ -209,30 +184,22 @@ export default function RuleForm({
     dispatch,
   ]);
 
+
   useEffect(() => {
     if (!shopData.id) {
       return;
     }
+
+    const shopId = shopData.id;
 
     async function loadProducts() {
       try {
         setProductsLoading(true);
         setProductsError(null);
 
-        const response = await fetch(
-          `http://localhost:3001/api/products?shopId=${shopData.id}`,
-        );
+        const data = await getProducts(shopId);
 
-        const result = await response.json();
-
-        if (!response.ok || !result.success) {
-          throw new Error(
-            result.message ||
-            "Failed to load products",
-          );
-        }
-
-        setProducts(result.data);
+        setProducts(data);
       } catch (error) {
         console.error(
           "Failed to load Shopify products:",
@@ -252,9 +219,6 @@ export default function RuleForm({
     loadProducts();
   }, [shopData.id]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [products.length]);
   const addTag = () => {
     const newTag =
       tagInput.trim();
@@ -297,41 +261,6 @@ export default function RuleForm({
     Number.parseFloat(
       amount,
     ) || 0;
-
-  const getModifiedPrice = (
-    originalPrice: number,
-  ) => {
-    let modifiedPrice =
-      originalPrice;
-
-    switch (
-    pricingType
-    ) {
-      case "fixedPrice":
-        modifiedPrice =
-          numericAmount;
-        break;
-
-      case "fixedDiscount":
-        modifiedPrice =
-          originalPrice -
-          numericAmount;
-        break;
-
-      case "percentage":
-        modifiedPrice =
-          originalPrice *
-          (1 -
-            numericAmount /
-            100);
-        break;
-    }
-
-    return Math.max(
-      modifiedPrice,
-      0,
-    );
-  };
 
   const handleSave = () => {
     const trimmedName =
@@ -432,12 +361,6 @@ export default function RuleForm({
         "percentage",
     },
   ];
-
-  const getProductImage = (
-    product: Product,
-  ): string | undefined => {
-    return product.image ?? undefined;
-  };
 
   if (
     isEdit &&
@@ -898,199 +821,13 @@ export default function RuleForm({
 
               {showProductPricingDetails && (
                 <div className="rule-form-product-table">
-                  {productsLoading && (
-                    <Box padding="400">
-                      <Text as="p" tone="subdued">
-                        Loading products...
-                      </Text>
-                    </Box>
-                  )}
-
-                  {productsError && (
-                    <Box padding="400">
-                      <Text as="p" tone="critical">
-                        {productsError}
-                      </Text>
-                    </Box>
-                  )}
-                  <IndexTable
-                    condensed={
-                      mdDown
-                    }
-                    resourceName={{
-                      singular:
-                        "product",
-                      plural:
-                        "products",
-                    }}
-                    itemCount={
-                      products.length
-                    }
-                    headings={[
-                      {
-                        title:
-                          "ID",
-                      },
-                      {
-                        title:
-                          "Image",
-                      },
-                      {
-                        title:
-                          "Title",
-                      },
-                      {
-                        title:
-                          "Original price",
-                        alignment:
-                          "end",
-                      },
-                      {
-                        title:
-                          "Modified price",
-                        alignment:
-                          "end",
-                      },
-                    ]}
-                    selectable={
-                      false
-                    }
-                  >
-                    {paginatedProducts.map((
-                      product,
-                      index,
-                    ) => {
-                      const modifiedPrice =
-                        getModifiedPrice(
-                          product.price,
-                        );
-
-                      const productImage =
-                        getProductImage(
-                          product,
-                        );
-
-                      return (
-                        <IndexTable.Row
-                          id={
-                            product.id
-                          }
-                          key={
-                            product.id
-                          }
-                          position={
-                            index
-                          }
-                        >
-
-                          {/* ID */}
-
-                          <IndexTable.Cell>
-                            <Text
-                              as="span"
-                              variant="bodySm"
-                              tone="subdued"
-                            >
-                              {
-                                (product.id).split("/")[4]
-                              }
-                            </Text>
-                          </IndexTable.Cell>
-
-                          {/* IMAGE */}
-
-                          <IndexTable.Cell>
-                            <Thumbnail
-                              source={
-                                productImage ??
-                                "https://cdn.shopify.com/s/files/1/0757/9955/files/placeholder-images-image_large.png"
-                              }
-                              alt={
-                                product.title
-                              }
-                              size="large"
-                            />
-                          </IndexTable.Cell>
-
-                          {/* TITLE */}
-
-                          <IndexTable.Cell>
-                            <Text
-                              as="span"
-                              fontWeight="semibold"
-                            >
-                              {
-                                product.title
-                              }
-                            </Text>
-                          </IndexTable.Cell>
-
-                          {/* ORIGINAL PRICE */}
-
-                          <IndexTable.Cell>
-                            <div
-                              style={{
-                                textAlign:
-                                  "right",
-                              }}
-                            >
-                              <Text
-                                as="span"
-                                tone="subdued"
-                              >
-                                $
-                                {product.price.toFixed(
-                                  2,
-                                )}
-                              </Text>
-                            </div>
-                          </IndexTable.Cell>
-
-                          {/* MODIFIED PRICE */}
-
-                          <IndexTable.Cell>
-                            <div
-                              style={{
-                                textAlign:
-                                  "right",
-                              }}
-                            >
-                              <Text
-                                as="span"
-                              >
-                                $
-                                {modifiedPrice.toFixed(
-                                  2,
-                                )}
-                              </Text>
-                            </div>
-                          </IndexTable.Cell>
-
-                        </IndexTable.Row>
-                      );
-                    },
-                    )}
-                  </IndexTable>
-                  
-                  {/* Pagination */}
-                  {products.length > PRODUCTS_PER_PAGE && (
-                    <Box padding="400">
-                      <InlineStack align="center">
-                        <Pagination
-                          hasPrevious={currentPage > 1}
-                          onPrevious={() =>
-                            setCurrentPage((page) => Math.max(1, page - 1))
-                          }
-                          hasNext={currentPage < totalPages}
-                          onNext={() =>
-                            setCurrentPage((page) => Math.min(totalPages, page + 1))
-                          }
-                          label={`Page ${currentPage} of ${totalPages}`}
-                        />
-                      </InlineStack>
-                    </Box>
-                  )}
-
+                  <ProductPricingTable
+                    products={products}
+                    pricingType={pricingType}
+                    amount={amount}
+                    loading={productsLoading}
+                    error={productsError}
+                  />
                 </div>
               )}
 
