@@ -1,34 +1,6 @@
 import type { Context } from "koa";
 import { shopifyGraphql } from "../services/shopify.service";
-
-type ShopifyProduct = {
-  id: string;
-  title: string;
-  handle: string;
-  status: string;
-  tags: string[];
-  featuredImage: {
-    url: string;
-    altText: string | null;
-  } | null;
-  variants: {
-    nodes: {
-      id: string;
-      price: string;
-      title: string;
-    }[];
-  };
-};
-
-type ShopifyProductsResponse = {
-  products: {
-    nodes: ShopifyProduct[];
-    pageInfo: {
-      hasNextPage: boolean;
-      endCursor: string | null;
-    };
-  };
-};
+import type { ShopifyProductsResponse, FormattedProduct } from "../types/shopify-product.type";
 
 export async function getProducts(ctx: Context) {
   const shopId = Number(ctx.query.shopId);
@@ -74,36 +46,24 @@ export async function getProducts(ctx: Context) {
     }
   `;
 
-  const data =
-    await shopifyGraphql<ShopifyProductsResponse>(
-      shopId,
-      query,
-    );
+  const data = await shopifyGraphql<ShopifyProductsResponse>(
+    shopId,
+    query,
+  );
 
-  const products =
-    data.products.nodes.map(
-      (product) => ({
-        id: product.id,
-        title: product.title,
-        handle: product.handle,
-        status: product.status,
-        tags: product.tags,
-        image:
-          product.featuredImage?.url ??
-          null,
-        imageAlt:
-          product.featuredImage?.altText ??
-          product.title,
-        price:
-          Number(
-            product.variants.nodes[0]?.price ??
-              0,
-          ),
-        variantId:
-          product.variants.nodes[0]?.id ??
-          null,
-      }),
-    );
+  const products: FormattedProduct[] = data.products.nodes.map(
+    (product) => ({
+      id: product.id,
+      title: product.title,
+      handle: product.handle,
+      status: product.status,
+      tags: product.tags,
+      image: product.featuredImage?.url ?? null,
+      imageAlt: product.featuredImage?.altText ?? product.title,
+      price: Number(product.variants.nodes[0]?.price ?? 0),
+      variantId: product.variants.nodes[0]?.id ?? null,
+    })
+  );
 
   ctx.body = {
     success: true,

@@ -1,5 +1,4 @@
 import Router from "@koa/router";
-
 import {
   createShop,
   getShop,
@@ -7,19 +6,11 @@ import {
 } from "../controllers/shop.controller";
 
 const router = new Router({
-  prefix: "/api/shops",
+  prefix: "/shops",
 });
 
 router.post("/", createShop);
-
-router.get(
-  "/:shopDomain",
-  getShop,
-);
-
-router.put(
-  "/:shopDomain",
-  updateShop,
-);
+router.get("/:shopDomain", getShop);
+router.put("/:shopDomain", updateShop);
 
 export default router;

@@ -1,18 +1,16 @@
 import type { Context } from "koa";
 import { Op } from "sequelize";
 import { Rule } from "../models";
-import {
-  syncRulesToShopMetafield,
-} from "../services/shopify.service";
+import { syncRulesToShopMetafield } from "../services/shopify.service";
+import type {
+  CreateRuleBody,
+  UpdateRuleBody,
+  SerializedRule,
+} from "../types/rule.type";
 
-function serializeRules(
-  rules: Rule[],
-) {
+function serializeRules(rules: Rule[]): SerializedRule[] {
   return rules
-    .filter(
-      (rule) =>
-        rule.status === "enable",
-    )
+    .filter((rule) => rule.status === "enable")
     .map((rule) => ({
       id: rule.id,
       name: rule.name,
@@ -26,35 +24,25 @@ function serializeRules(
 }
 
 // GET /api/rules?shopId=1&search=VIP
-export async function getRules(
-  ctx: Context,
-) {
-  const shopId = Number(
-    ctx.query.shopId,
-  );
+export async function getRules(ctx: Context) {
+  const shopId = Number(ctx.query.shopId);
 
   if (!shopId) {
     ctx.status = 400;
-
     ctx.body = {
       success: false,
       message: "shopId is required",
     };
-
     return;
   }
 
-  const rules =
-    await Rule.findAll({
-      where: {
-        shopId,
-      },
-
-      order: [
-        ["priority", "ASC"],
-        ["createdAt", "DESC"],
-      ],
-    });
+  const rules = await Rule.findAll({
+    where: { shopId },
+    order: [
+      ["priority", "ASC"],
+      ["createdAt", "DESC"],
+    ],
+  });
 
   ctx.body = {
     success: true,
@@ -62,24 +50,17 @@ export async function getRules(
   };
 }
 
-export async function getRule(
-  ctx: Context,
-) {
-  const id = Number(
-    ctx.params.id,
-  );
+export async function getRule(ctx: Context) {
+  const id = Number(ctx.params.id);
 
-  const rule =
-    await Rule.findByPk(id);
+  const rule = await Rule.findByPk(id);
 
   if (!rule) {
     ctx.status = 404;
-
     ctx.body = {
       success: false,
       message: "Rule not found",
     };
-
     return;
   }
 
@@ -89,22 +70,8 @@ export async function getRule(
   };
 }
 
-export async function createRule(
-  ctx: Context,
-) {
-
-  const body = ctx.request.body as {
-    shopId?: number;
-    name?: string;
-    status?: "enable" | "disable";
-    applyTo?: "all" | "tags";
-    tags?: string[];
-    pricingType?:
-    | "fixedPrice"
-    | "fixedDiscount"
-    | "percentage";
-    value?: number;
-  };
+export async function createRule(ctx: Context) {
+  const body = ctx.request.body as CreateRuleBody;
 
   const {
     shopId,
@@ -116,107 +83,64 @@ export async function createRule(
     value,
   } = body;
 
-  if (
-    !shopId ||
-    !name ||
-    !pricingType ||
-    value === undefined
-  ) {
+  if (!shopId || !name || !pricingType || value === undefined) {
     ctx.status = 400;
-
     ctx.body = {
       success: false,
-      message:
-        "Missing required fields",
+      message: "Missing required fields",
     };
-
     return;
   }
 
-  const highestPriority =
-    await Rule.max("priority", {
-      where: {
-        shopId,
-      },
-    });
+  const highestPriority = await Rule.max("priority", {
+    where: { shopId },
+  });
 
-  const priority =
-    Number(highestPriority || 0) + 1;
+  const priority = Number(highestPriority || 0) + 1;
 
-  const rule =
-    await Rule.create({
-      shopId,
-      name: name.trim(),
-      status,
-      priority,
-      applyTo,
-      tags,
-      pricingType,
-      value,
-    });
-
-  const rules =
-    await Rule.findAll({
-      where: {
-        shopId,
-      },
-      order: [
-        ["priority", "ASC"],
-        ["createdAt", "DESC"],
-      ],
-    });
-
-  await syncRulesToShopMetafield(
+  const rule = await Rule.create({
     shopId,
-    serializeRules(rules),
-  );
+    name: name.trim(),
+    status,
+    priority,
+    applyTo,
+    tags,
+    pricingType,
+    value,
+  });
+
+  const rules = await Rule.findAll({
+    where: { shopId },
+    order: [
+      ["priority", "ASC"],
+      ["createdAt", "DESC"],
+    ],
+  });
+
+  await syncRulesToShopMetafield(shopId, serializeRules(rules));
 
   ctx.status = 201;
-
   ctx.body = {
     success: true,
     data: rule,
   };
-  // console.log(ctx)
-
 }
 
-export async function updateRule(
-  ctx: Context,
-) {
-  const id = Number(
-    ctx.params.id,
-  );
+export async function updateRule(ctx: Context) {
+  const id = Number(ctx.params.id);
 
-  const rule =
-    await Rule.findByPk(id);
+  const rule = await Rule.findByPk(id);
 
   if (!rule) {
     ctx.status = 404;
-
     ctx.body = {
       success: false,
       message: "Rule not found",
     };
-
     return;
   }
 
-  const body = ctx.request.body as Partial<{
-    name: string;
-    status:
-    | "enable"
-    | "disable";
-    applyTo:
-    | "all"
-    | "tags";
-    tags: string[];
-    pricingType:
-    | "fixedPrice"
-    | "fixedDiscount"
-    | "percentage";
-    value: number;
-  }>;
+  const body = ctx.request.body as UpdateRuleBody;
 
   if (body.name !== undefined) {
     rule.name = body.name.trim();
@@ -235,8 +159,7 @@ export async function updateRule(
   }
 
   if (body.pricingType !== undefined) {
-    rule.pricingType =
-      body.pricingType;
+    rule.pricingType = body.pricingType;
   }
 
   if (body.value !== undefined) {
@@ -245,21 +168,15 @@ export async function updateRule(
 
   await rule.save();
 
-  const rules =
-    await Rule.findAll({
-      where: {
-        shopId: rule.shopId,
-      },
-      order: [
-        ["priority", "ASC"],
-        ["createdAt", "DESC"],
-      ],
-    });
+  const rules = await Rule.findAll({
+    where: { shopId: rule.shopId },
+    order: [
+      ["priority", "ASC"],
+      ["createdAt", "DESC"],
+    ],
+  });
 
-  await syncRulesToShopMetafield(
-    rule.shopId,
-    serializeRules(rules),
-  );
+  await syncRulesToShopMetafield(rule.shopId, serializeRules(rules));
 
   ctx.body = {
     success: true,
@@ -267,47 +184,33 @@ export async function updateRule(
   };
 }
 
-export async function deleteRule(
-  ctx: Context,
-) {
-  const id = Number(
-    ctx.params.id,
-  );
+export async function deleteRule(ctx: Context) {
+  const id = Number(ctx.params.id);
 
-  const rule =
-    await Rule.findByPk(id);
+  const rule = await Rule.findByPk(id);
 
   if (!rule) {
     ctx.status = 404;
-
     ctx.body = {
       success: false,
       message: "Rule not found",
     };
-
     return;
   }
 
-  const shopId =
-    rule.shopId;
+  const shopId = rule.shopId;
 
   await rule.destroy();
 
-  const rules =
-    await Rule.findAll({
-      where: {
-        shopId,
-      },
-      order: [
-        ["priority", "ASC"],
-        ["createdAt", "DESC"],
-      ],
-    });
+  const rules = await Rule.findAll({
+    where: { shopId },
+    order: [
+      ["priority", "ASC"],
+      ["createdAt", "DESC"],
+    ],
+  });
 
-  await syncRulesToShopMetafield(
-    shopId,
-    serializeRules(rules),
-  );
+  await syncRulesToShopMetafield(shopId, serializeRules(rules));
 
   ctx.status = 204;
 }

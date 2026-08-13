@@ -1,93 +1,12 @@
 import type { Context } from "koa";
-
 import { Shop } from "../models";
+import type { CreateShopBody, UpdateShopBody } from "../types/shop.type";
 
-type CreateShopBody = {
-  shopDomain?: string;
-  shopName?: string;
-  accessToken?: string;
-  senderEmail?: string;
-};
-
-type UpdateShopBody = {
-  shopName?: string;
-  senderEmail?: string;
-};
-
-// export async function createShop(ctx: Context) {
-//   const {
-//     shopDomain,
-//     shopName,
-//     accessToken,
-//     senderEmail,
-//   } = ctx.request.body as CreateShopBody;
-
-//   if (
-//     !shopDomain ||
-//     !shopName ||
-//     !accessToken
-//   ) {
-//     ctx.status = 400;
-
-//     ctx.body = {
-//       success: false,
-//       message:
-//         "shopDomain, shopName and accessToken are required",
-//     };
-
-//     return;
-//   }
-
-//   const existingShop = await Shop.findOne({
-//     where: {
-//       shopDomain,
-//     },
-//   });
-
-//   if (existingShop) {
-//     ctx.status = 409;
-
-//     ctx.body = {
-//       success: false,
-//       message: "Shop already exists",
-//     };
-
-//     return;
-//   }
-
-//   const shop = await Shop.create({
-//     shopDomain,
-//     shopName,
-//     accessToken,
-//     senderEmail: senderEmail ?? null,
-//   });
-
-//   ctx.status = 201;
-
-//   ctx.body = {
-//     success: true,
-
-//     data: {
-//       id: shop.id,
-//       shopDomain: shop.shopDomain,
-//       shopName: shop.shopName,
-//       senderEmail: shop.senderEmail,
-//     },
-//   };
-// }
-
+// POST /api/shops
 export async function createShop(ctx: Context) {
-  const body = ctx.request.body as {
-    shopDomain?: string;
-    shopName?: string;
-    accessToken?: string;
-  };
+  const body = ctx.request.body as CreateShopBody;
 
-  const {
-    shopDomain,
-    shopName,
-    accessToken,
-  } = body;
+  const { shopDomain, shopName, accessToken } = body;
 
   if (!shopDomain || !shopName || !accessToken) {
     ctx.status = 400;
@@ -100,18 +19,17 @@ export async function createShop(ctx: Context) {
     return;
   }
 
-  const [shop, created] =
-    await Shop.findOrCreate({
-      where: {
-        shopDomain,
-      },
-      defaults: {
-        shopDomain,
-        shopName,
-        accessToken,
-        status: "active",
-      },
-    });
+  const [shop, created] = await Shop.findOrCreate({
+    where: {
+      shopDomain,
+    },
+    defaults: {
+      shopDomain,
+      shopName,
+      accessToken,
+      status: "active",
+    },
+  });
 
   if (!created) {
     shop.shopName = shopName;
@@ -127,6 +45,7 @@ export async function createShop(ctx: Context) {
     data: shop,
   };
 }
+
 // GET /api/shops/:shopDomain
 export async function getShop(ctx: Context) {
   const { shopDomain } = ctx.params;
@@ -135,7 +54,6 @@ export async function getShop(ctx: Context) {
     where: {
       shopDomain,
     },
-
     attributes: {
       exclude: ["accessToken"],
     },
@@ -157,14 +75,11 @@ export async function getShop(ctx: Context) {
     data: shop,
   };
 }
+
 // PUT /api/shops/:shopDomain
 export async function updateShop(ctx: Context) {
   const { shopDomain } = ctx.params;
-
-  const {
-    shopName,
-    senderEmail,
-  } = ctx.request.body as UpdateShopBody;
+  const { shopName, senderEmail } = ctx.request.body as UpdateShopBody;
 
   const shop = await Shop.findOne({
     where: {
@@ -188,15 +103,13 @@ export async function updateShop(ctx: Context) {
   }
 
   if (senderEmail !== undefined) {
-    shop.senderEmail =
-      senderEmail || null;
+    shop.senderEmail = senderEmail || null;
   }
 
   await shop.save();
 
   ctx.body = {
     success: true,
-
     data: {
       id: shop.id,
       shopDomain: shop.shopDomain,

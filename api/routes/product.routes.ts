@@ -1,15 +1,10 @@
 import Router from "@koa/router";
-import {
-  getProducts,
-} from "../controllers/product.controller";
+import { getProducts } from "../controllers/product.controller";
 
 const router = new Router({
-  prefix: "/api",
+  prefix: "/products",
 });
 
-router.get(
-  "/products",
-  getProducts,
-);
+router.get("/", getProducts);
 
 export default router;
