@@ -8,16 +8,21 @@ import {
 function serializeRules(
   rules: Rule[],
 ) {
-  return rules.map((rule) => ({
-    id: rule.id,
-    name: rule.name,
-    status: rule.status,
-    priority: rule.priority,
-    applyTo: rule.applyTo,
-    tags: rule.tags ?? [],
-    pricingType: rule.pricingType,
-    value: Number(rule.value),
-  }));
+  return rules
+    .filter(
+      (rule) =>
+        rule.status === "enable",
+    )
+    .map((rule) => ({
+      id: rule.id,
+      name: rule.name,
+      status: rule.status,
+      priority: rule.priority,
+      applyTo: rule.applyTo,
+      tags: rule.tags ?? [],
+      pricingType: rule.pricingType,
+      value: Number(rule.value),
+    }));
 }
 
 // GET /api/rules?shopId=1&search=VIP
@@ -87,6 +92,7 @@ export async function getRule(
 export async function createRule(
   ctx: Context,
 ) {
+
   const body = ctx.request.body as {
     shopId?: number;
     name?: string;
@@ -171,6 +177,8 @@ export async function createRule(
     success: true,
     data: rule,
   };
+  // console.log(ctx)
+
 }
 
 export async function updateRule(

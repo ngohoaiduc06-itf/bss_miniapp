@@ -109,6 +109,7 @@ export async function createShop(ctx: Context) {
         shopDomain,
         shopName,
         accessToken,
+        status: "active",
       },
     });
 
