@@ -79,8 +79,8 @@ export async function getShop(ctx: Context) {
 // PUT /api/shops/:shopDomain
 export async function updateShop(ctx: Context) {
   const { shopDomain } = ctx.params;
-  const { shopName, senderEmail } = ctx.request.body as UpdateShopBody;
-
+  const { shopName } = ctx.request.body as UpdateShopBody;
+  
   const shop = await Shop.findOne({
     where: {
       shopDomain,
@@ -102,10 +102,6 @@ export async function updateShop(ctx: Context) {
     shop.shopName = shopName;
   }
 
-  if (senderEmail !== undefined) {
-    shop.senderEmail = senderEmail || null;
-  }
-
   await shop.save();
 
   ctx.body = {
@@ -114,7 +110,6 @@ export async function updateShop(ctx: Context) {
       id: shop.id,
       shopDomain: shop.shopDomain,
       shopName: shop.shopName,
-      senderEmail: shop.senderEmail,
     },
   };
 }

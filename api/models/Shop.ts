@@ -19,8 +19,6 @@ export class Shop extends Model<
   declare shopName: string;
 
   declare accessToken: string;
-
-  declare senderEmail: string | null;
   
   declare status: "active" | "uninstalled";
 
@@ -60,15 +58,6 @@ Shop.init(
       ),
       allowNull: false,
       defaultValue: "active",
-    },
-    
-    senderEmail: {
-      type: DataTypes.STRING(255),
-      allowNull: true,
-
-      validate: {
-        isEmail: true,
-      },
     },
 
     createdAt: {
