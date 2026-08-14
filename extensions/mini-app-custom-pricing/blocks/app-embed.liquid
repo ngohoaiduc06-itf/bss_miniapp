@@ -4,83 +4,111 @@
   </style>
 
   <script>
-    (function () {
-      if (window.__bssPricingApplied) return;
-      window.__bssPricingApplied = true;
+  (function () {
+    const product = {{ product | json }};
+    const rules = {{ shop.metafields.bss.custom_pricing_rules.value | default: '[]' | json }};
+    const moneyFormat = {{ shop.money_format | json }};
 
-      const product = {{ product | json }};
-      const rules = {{ shop.metafields.bss.custom_pricing_rules.value | default: '[]' | json }};
-      const moneyFormat = {{ shop.money_format | json }};
+    console.log("[BSS Custom Pricing] Init Data:", { product, rules, moneyFormat });
 
-      // LOG 1: Check dữ liệu đầu vào từ Shopify
-      console.log("[BSS Custom Pricing] Init Data:", { product, rules, moneyFormat });
+    if (!product || !rules.length) return;
 
-      // 1. Kiểm tra Rule có hợp lệ không
-      function isRuleApplicable(rule) {
+    const productTags = new Set((product.tags || []).map(t => t.trim().toLowerCase()));
+
+    const activeRule = rules
+      .filter(rule => {
         if (rule.status !== "enable") return false;
         if (rule.applyTo === "all") return true;
-        if (rule.applyTo === "tags") {
-          const productTags = (product.tags || []).map(t => t.trim().toLowerCase());
-          const ruleTags = (rule.tags || []).map(t => t.trim().toLowerCase());
-          return ruleTags.some(tag => productTags.includes(tag));
+        if (rule.applyTo === "tags" && Array.isArray(rule.tags)) {
+          return rule.tags.some(tag => productTags.has(tag.trim().toLowerCase()));
         }
         return false;
+      })
+      .sort((a, b) => Number(a.priority) - Number(b.priority))[0];
+
+    if (!activeRule) return;
+
+    const variantMap = new Map(product.variants.map(v => [String(v.id), v]));
+
+    function calculatePrice(originalPrice, rule) {
+      const val = Number(rule?.value);
+      if (!rule || !Number.isFinite(val)) return originalPrice;
+
+      switch (rule.pricingType) {
+        case "fixedPrice":
+          return Math.max(0, val);
+        case "fixedDiscount":
+          return Math.max(0, originalPrice - val);
+        case "percentage":
+          return Math.max(0, originalPrice * (1 - val / 100));
+        default:
+          return originalPrice;
+      }
+    }
+
+    function formatMoney(cents, format) {
+      let value = '';
+      const placeholderRegex = /\{\{\s*(\w+)\s*\}\}/;
+
+      function formatWithDelimiters(number, precision = 2, thousands = ',', decimals = '.') {
+        if (isNaN(number) || number == null) return 0;
+        number = (number / 100).toFixed(precision);
+        const parts = number.split('.');
+        return parts[0].replace(/(\d)(?=(\d\d\d)+(?!\d))/g, '$1' + thousands) + (parts[1] ? decimals + parts[1] : '');
       }
 
-      // 2. Tính giá sau giảm
-      function calculatePrice(originalPrice, rule) {
-        const val = Number(rule?.value);
-        if (!rule || !Number.isFinite(val)) return originalPrice;
-
-        switch (rule.pricingType) {
-          case "fixedPrice": return Math.max(0, val);
-          case "fixedDiscount": return Math.max(0, originalPrice - val);
-          case "percentage": return Math.max(0, originalPrice * (1 - val / 100));
-          default: return originalPrice;
-        }
+      switch (format.match(placeholderRegex)?.[1]) {
+        case 'amount':
+          value = formatWithDelimiters(cents, 2);
+          break;
+        case 'amount_no_decimals':
+          value = formatWithDelimiters(cents, 0);
+          break;
+        case 'amount_with_comma_separator':
+          value = formatWithDelimiters(cents, 2, '.', ',');
+          break;
+        case 'amount_no_decimals_with_comma_separator':
+          value = formatWithDelimiters(cents, 0, '.', ',');
+          break;
+        default:
+          value = (cents / 100).toFixed(2);
       }
 
-      // 3. Format giá tien
-      function formatMoney(cents, format) {
-        const value = (Number(cents) / 100).toFixed(2);
-        const valNoDec = Math.round(cents / 100).toString();
+      return format.replace(placeholderRegex, value);
+    }
 
-        return format
-          .replace(/\{\{\s*amount\s*\}\}/, value)
-          .replace(/\{\{\s*amount_no_decimals\s*\}\}/, valNoDec)
-          .replace(/\{\{\s*amount_with_comma_separator\s*\}\}/, value.replace(".", ","))
-          .replace(/\{\{\s*amount_no_decimals_with_comma_separator\s*\}\}/, valNoDec.replace(".", ","));
+    function getCurrentVariant() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const variantIdFromUrl = urlParams.get('variant');
+      if (variantIdFromUrl && variantMap.has(variantIdFromUrl)) {
+        return variantMap.get(variantIdFromUrl);
       }
 
-      // 4. Lấy Rule có ưu tiên cao nhất
-      const activeRule = rules
-        .filter(isRuleApplicable)
-        .sort((a, b) => Number(a.priority) - Number(b.priority))[0];
+      const variantInput = document.querySelector('form[action*="/cart/add"] [name="id"]');
+      if (variantInput?.value && variantMap.has(String(variantInput.value))) {
+        return variantMap.get(String(variantInput.value));
+      }
+      return product.variants[0] || null;
+    }
+    
+    let isUpdatingDOM = false;
 
-      if (!activeRule) {
-        console.log("[BSS Custom Pricing] No applicable rule found.");
+    function applyPricing() {
+      const variant = getCurrentVariant();
+      if (!variant) return;
+
+      const originalPrice = Number(variant.price || 0);
+      const discountedPrice = calculatePrice(originalPrice, activeRule);
+
+      if (!Number.isFinite(originalPrice) || originalPrice <= 0 || discountedPrice >= originalPrice) {
         return;
       }
 
-      const origPrice = Number(product?.variants?.[0]?.price || 0);
-      const discPrice = calculatePrice(origPrice, activeRule);
+      const formattedOriginal = formatMoney(originalPrice, moneyFormat);
+      const formattedDiscounted = formatMoney(discountedPrice, moneyFormat);
 
-      if (discPrice >= origPrice) {
-        console.log("[BSS Custom Pricing] Price not reduced, skipping.", { origPrice, discPrice });
-        return;
-      }
+      isUpdatingDOM = true;
 
-      const formattedOrig = formatMoney(origPrice, moneyFormat);
-      const formattedDisc = formatMoney(discPrice, moneyFormat);
-
-      // LOG 2: Check Rule được chọn & Giá sau khi tính toán
-      console.log("[BSS Custom Pricing] Applied Rule & Prices:", {
-        rule: activeRule,
-        originalPrice: formattedOrig,
-        discountedPrice: formattedDisc
-      });
-
-      // 5. Cập nhật giao diện Rise Theme
       document.querySelectorAll(".price").forEach((container) => {
         const saleBlock = container.querySelector(".price__sale");
         if (!saleBlock) return;
@@ -88,11 +116,20 @@
         const compareEl = saleBlock.querySelector("s.price-item--regular");
         const saleEl = saleBlock.querySelector(".price-item--sale");
 
-        if (compareEl) compareEl.textContent = formattedOrig;
-        if (saleEl) {
-          saleEl.textContent = formattedDisc;
+        if (compareEl && compareEl.textContent !== formattedOriginal) {
+          compareEl.textContent = formattedOriginal;
+        }
+
+        if (saleEl && saleEl.textContent !== formattedDiscounted) {
+          saleEl.textContent = formattedDiscounted;
           saleEl.style.color = "#d82c0d";
         }
+
+        console.log("[BSS Custom Pricing] Applied Rule & Prices:", {
+          rule: activeRule,
+          originalPrice: formattedOriginal,
+          discountedPrice: formattedDiscounted
+        });
 
         saleBlock.classList.remove("hidden");
         saleBlock.style.display = "";
@@ -105,7 +142,46 @@
 
         container.classList.add("price--on-sale");
       });
-    })();
+      setTimeout(() => {
+        isUpdatingDOM = false;
+      }, 50);
+    }
+
+    function initListeners() {
+      window.addEventListener("popstate", applyPricing);
+
+      const productForm = document.querySelector('form[action*="/cart/add"]');
+      if (productForm) {
+        productForm.addEventListener("change", () => {
+          setTimeout(applyPricing, 50);
+        });
+      }
+
+      const targetNodes = document.querySelectorAll(".price");
+      if (targetNodes.length > 0) {
+        const observer = new MutationObserver(() => {
+          if (!isUpdatingDOM) {
+            applyPricing();
+          }
+        });
+
+        targetNodes.forEach(node => {
+          observer.observe(node, { childList: true, subtree: true, characterData: true });
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => {
+        applyPricing();
+        initListeners();
+      });
+    } else {
+      applyPricing();
+      initListeners();
+    }
+
+  })();
   </script>
 {% endif %}
 
