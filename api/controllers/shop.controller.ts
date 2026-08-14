@@ -34,6 +34,7 @@ export async function createShop(ctx: Context) {
   if (!created) {
     shop.shopName = shopName;
     shop.accessToken = accessToken;
+    shop.status = "active";
 
     await shop.save();
   }
@@ -80,7 +81,7 @@ export async function getShop(ctx: Context) {
 export async function updateShop(ctx: Context) {
   const { shopDomain } = ctx.params;
   const { shopName } = ctx.request.body as UpdateShopBody;
-  
+
   const shop = await Shop.findOne({
     where: {
       shopDomain,
@@ -110,6 +111,42 @@ export async function updateShop(ctx: Context) {
       id: shop.id,
       shopDomain: shop.shopDomain,
       shopName: shop.shopName,
+    },
+  };
+}
+
+// PATCH /api/shops/:shopDomain/uninstalled
+export async function uninstallShop(ctx: Context) {
+  const { shopDomain } = ctx.params;
+
+  const shop = await Shop.findOne({
+    where: {
+      shopDomain,
+    },
+  });
+
+  if (!shop) {
+    ctx.status = 404;
+
+    ctx.body = {
+      success: false,
+      message: "Shop not found",
+    };
+
+    return;
+  }
+
+  shop.status = "uninstalled";
+
+  await shop.save();
+
+  ctx.body = {
+    success: true,
+    data: {
+      id: shop.id,
+      shopDomain: shop.shopDomain,
+      shopName: shop.shopName,
+      status: shop.status,
     },
   };
 }
