@@ -126,7 +126,7 @@ export default function RuleForm({
   const [amount, setAmount] =
     useState(
       rule?.value?.toString() ??
-      "20",
+      "",
     );
 
   const [
@@ -518,7 +518,7 @@ export default function RuleForm({
                   }
                   autoComplete="off"
                   requiredIndicator
-                  placeholder="Example: VIP Customer 10%"
+                  placeholder="Example: Rule for VIP customers"
                   helpText="Enter a name to easily identify this pricing rule."
                 />
 
