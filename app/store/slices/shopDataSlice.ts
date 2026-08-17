@@ -17,18 +17,38 @@ const shopDataSlice = createSlice({
 
   initialState,
 
-  reducers: {
+ reducers: {
+    setShopData: (
+      state,
+      action: PayloadAction<ShopData>,
+    ) => {
+      state.id = action.payload.id;
+      state.name = action.payload.name;
+      state.domain = action.payload.domain;
+    },
+
     updateShopData: (
       state,
       action: PayloadAction<Partial<ShopData>>,
     ) => {
-      Object.assign(state, action.payload);
+      Object.assign(
+        state,
+        action.payload,
+      );
+    },
+
+    clearShopData: (state) => {
+      state.id = null;
+      state.name = "";
+      state.domain = "";
     },
   },
 });
 
 export const {
+  setShopData,
   updateShopData,
+  clearShopData,
 } = shopDataSlice.actions;
 
 export default shopDataSlice.reducer;

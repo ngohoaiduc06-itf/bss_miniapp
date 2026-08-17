@@ -13,7 +13,9 @@ import {
 } from "../store/hooks";
 
 import {
+  setShopData,
   updateShopData,
+  clearShopData,
 } from "../store/slices/shopDataSlice";
 
 import RuleList from "../components/rule-list/RuleList";
@@ -22,74 +24,108 @@ const API_BASE_URL =
   import.meta.env.VITE_API_URL ??
   "http://localhost:3001";
 
+// export const loader = async ({
+//   request,
+// }: LoaderFunctionArgs) => {
+//   const { admin, session } =
+//     await authenticate.admin(request);
+
+//   const response =
+//     await admin.graphql(`
+//       query {
+//         shop {
+//           id
+//           name
+//         }
+//       }
+//     `);
+
+//   const result =
+//     await response.json();
+
+//   const shop =
+//     result.data.shop;
+
+//   if (!session.accessToken) {
+//     throw new Error(
+//       "Access token is missing",
+//     );
+//   }
+
+//   const shopResponse =
+//     await fetch(
+//       `${API_BASE_URL}/api/shops`,
+//       {
+//         method: "POST",
+
+//         headers: {
+//           "Content-Type":
+//             "application/json",
+//         },
+
+//         body: JSON.stringify({
+//           shopDomain:
+//             session.shop,
+
+//           shopName:
+//             shop.name,
+
+//           accessToken:
+//             session.accessToken,
+//         }),
+//       },
+//     );
+
+//   const shopResult =
+//     await shopResponse.json();
+
+//   if (
+//     !shopResponse.ok ||
+//     !shopResult.success
+//   ) {
+//     throw new Error(
+//       `Failed to save shop: ${JSON.stringify(
+//         shopResult,
+//       )}`,
+//     );
+//   }
+
+//   return {
+//     shop: shopResult.data,
+//   };
+// };
+
 export const loader = async ({
   request,
 }: LoaderFunctionArgs) => {
-  const { admin, session } =
+  const { session } =
     await authenticate.admin(request);
 
   const response =
-    await admin.graphql(`
-      query {
-        shop {
-          id
-          name
-        }
-      }
-    `);
+    await fetch(
+      `${API_BASE_URL}/api/shops/${encodeURIComponent(
+        session.shop,
+      )}`,
+    );
+
+  if (!response.ok) {
+    throw new Error(
+      "Failed to get shop",
+    );
+  }
 
   const result =
     await response.json();
 
-  const shop =
-    result.data.shop;
-
-  if (!session.accessToken) {
+  if (!result.success) {
     throw new Error(
-      "Access token is missing",
-    );
-  }
-
-  const shopResponse =
-    await fetch(
-      `${API_BASE_URL}/api/shops`,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify({
-          shopDomain:
-            session.shop,
-
-          shopName:
-            shop.name,
-
-          accessToken:
-            session.accessToken,
-        }),
-      },
-    );
-
-  const shopResult =
-    await shopResponse.json();
-
-  if (
-    !shopResponse.ok ||
-    !shopResult.success
-  ) {
-    throw new Error(
-      `Failed to save shop: ${JSON.stringify(
-        shopResult,
-      )}`,
+      result.message ||
+        "Failed to get shop",
     );
   }
 
   return {
-    shop: shopResult.data,
+    shop: result.data,
   };
 };
 
@@ -220,7 +256,7 @@ export default function Index() {
 
   useEffect(() => {
     dispatch(
-      updateShopData({
+      setShopData({
         id: shop.id,
         name: shop.shopName,
         domain: shop.shopDomain,

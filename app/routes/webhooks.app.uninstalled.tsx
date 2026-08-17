@@ -8,6 +8,11 @@ export const action = async ({
   request,
 }: ActionFunctionArgs) => {
 
+  // console.log("=================================");
+  // console.log("[WEBHOOK] app/uninstalled RECEIVED");
+  // console.log("=================================");
+
+
   const { shop, session, topic, } = await authenticate.webhook(request);
 
   const url =
@@ -56,6 +61,10 @@ export const action = async ({
       where: { shop },
     });
   }
+  
+  // console.log("=================================");
+  // console.log("[WEBHOOK] app/uninstalled RECEIVED");
+  // console.log("=================================");
 
   return new Response();
 };
