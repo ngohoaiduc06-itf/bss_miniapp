@@ -188,7 +188,26 @@ export default function RuleForm({
 
         const data = await getProducts(shopId);
 
-        setProducts(data);
+        if (applyTo === "all") {
+          setProducts(data);
+          return;
+        }
+
+        const normalizedTags = tags.map((tag) =>
+          tag.trim().toLowerCase()
+        );
+
+        const filteredProducts = data.filter((product) => {
+          const productTags = (product.tags ?? []).map((tag) =>
+            tag.trim().toLowerCase()
+          );
+
+          return normalizedTags.some((tag) =>
+            productTags.includes(tag)
+          );
+        });
+
+        setProducts(filteredProducts);
       } catch (error) {
         console.error(
           "Failed to load Shopify products:",
@@ -206,7 +225,7 @@ export default function RuleForm({
     }
 
     loadProducts();
-  }, [shopData.id]);
+  }, [shopData.id, applyTo, tags]);
 
   const addTag = () => {
     const newTag = tagInput.trim();

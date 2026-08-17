@@ -7,7 +7,6 @@ import {
 
 import {
   DeleteIcon,
-  DuplicateIcon,
   EditIcon,
 } from "@shopify/polaris-icons";
 
@@ -21,12 +20,10 @@ import {
 
 type RuleTableProps = {
   rules: Rule[];
-
   selectedRules: string[];
-
   selectedItemsCount:
-    | number
-    | "All";
+  | number
+  | "All";
 
   onSelectionChange: (
     selectionType: string,
@@ -41,6 +38,14 @@ type RuleTableProps = {
   onDelete: (
     rule: Rule,
   ) => void;
+
+  onBulkEnable: () => void;
+
+  onBulkDisable: () => void;
+
+  onBulkDelete: () => void;
+
+  bulkActionLoading?: boolean;
 };
 
 export default function RuleTable({
@@ -50,7 +55,30 @@ export default function RuleTable({
   onSelectionChange,
   onEdit,
   onDelete,
+  onBulkEnable,
+  onBulkDisable,
+  onBulkDelete,
+  bulkActionLoading = false,
 }: RuleTableProps) {
+  const promotedBulkActions = [
+    {
+      content: "Enable",
+      onAction: onBulkEnable,
+      disabled: bulkActionLoading,
+    },
+    {
+      content: "Disable",
+      onAction: onBulkDisable,
+      disabled: bulkActionLoading,
+    },
+    {
+      content: "Delete",
+      destructive: true,
+      onAction: onBulkDelete,
+      disabled: bulkActionLoading,
+    },
+  ];
+
   return (
     <IndexTable
       resourceName={{
@@ -65,6 +93,9 @@ export default function RuleTable({
       }
       onSelectionChange={
         onSelectionChange
+      }
+      promotedBulkActions={
+        promotedBulkActions
       }
       selectable
       headings={[
@@ -169,15 +200,6 @@ export default function RuleTable({
                       onEdit(rule)
                     }
                   />
-
-                  {/* <Button
-                    icon={
-                      DuplicateIcon
-                    }
-                    variant="secondary"
-                    size="slim"
-                    accessibilityLabel={`Duplicate ${rule.name}`}
-                  /> */}
 
                   <Button
                     icon={DeleteIcon}

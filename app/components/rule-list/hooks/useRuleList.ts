@@ -8,6 +8,7 @@ import { useAppDispatch } from "../../../store/hooks";
 
 import {
   deleteRule,
+  updateRule,
   fetchRules,
 } from "../../../store/slices/rulesSlice";
 
@@ -28,44 +29,40 @@ export function useRuleList({
   shopId,
   rules,
 }: UseRuleListParams) {
-  const dispatch =
-    useAppDispatch();
+  const dispatch = useAppDispatch();
 
-  const [
-    searchOpen,
-    setSearchOpen,
-  ] = useState(false);
+  const [searchOpen, setSearchOpen] =
+    useState(false);
 
-  const [
-    searchValue,
-    setSearchValue,
-  ] = useState("");
+  const [searchValue, setSearchValue] =
+    useState("");
 
-  const [
-    sortPopoverActive,
-    setSortPopoverActive,
-  ] = useState(false);
+  const [sortPopoverActive, setSortPopoverActive] =
+    useState(false);
 
-  const [
-    sortField,
-    setSortField,
-  ] =
-    useState<SortField>(
-      "priority",
-    );
+  const [sortField, setSortField] =
+    useState<SortField>("priority");
 
-  const [
-    sortDirection,
-    setSortDirection,
-  ] =
-    useState<SortDirection>(
-      "asc",
-    );
+  const [sortDirection, setSortDirection] =
+    useState<SortDirection>("asc");
 
-  const [
-    selectedRules,
-    setSelectedRules,
-  ] = useState<string[]>([]);
+  const [selectedRules, setSelectedRules] =
+    useState<string[]>([]);
+
+  const [deleteRuleTarget, setDeleteRuleTarget] =
+    useState<Rule | null>(null);
+
+  const [deleteLoading, setDeleteLoading] =
+    useState(false);
+
+  const [bulkActionLoading, setBulkActionLoading] =
+    useState(false);
+
+  const [bulkDeleteOpen, setBulkDeleteOpen] =
+    useState(false);
+
+  const [bulkDeleteError, setBulkDeleteError] =
+    useState<string | null>(null);
 
   useEffect(() => {
     if (!shopId) {
@@ -112,12 +109,8 @@ export function useRuleList({
     direction: SortDirection,
   ) => {
     setSortField(field);
-    setSortDirection(
-      direction,
-    );
-    setSortPopoverActive(
-      false,
-    );
+    setSortDirection(direction);
+    setSortPopoverActive(false);
   };
 
   const handleSelectionChange = (
@@ -132,14 +125,11 @@ export function useRuleList({
       if (isSelecting) {
         setSelectedRules(
           displayedRules.map(
-            (rule) =>
-              rule.id,
+            (rule) => rule.id,
           ),
         );
       } else {
-        setSelectedRules(
-          [],
-        );
+        setSelectedRules([]);
       }
 
       return;
@@ -179,41 +169,162 @@ export function useRuleList({
     );
   };
 
-  const handleDelete = async (
+  const handleDelete = (
     rule: Rule,
   ) => {
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete "${rule.name}"?`,
-      );
+    setDeleteRuleTarget(rule);
+  };
 
-    if (!confirmed) {
+  const confirmDelete = async () => {
+    if (!deleteRuleTarget) {
       return;
     }
 
     try {
+      setDeleteLoading(true);
+
       await dispatch(
-        deleteRule(rule.id),
+        deleteRule(
+          deleteRuleTarget.id,
+        ),
       ).unwrap();
 
       if (shopId) {
-        dispatch(
+        await dispatch(
           fetchRules(shopId),
-        );
+        ).unwrap();
       }
 
       setSelectedRules(
         (currentSelected) =>
           currentSelected.filter(
             (id) =>
-              id !== rule.id,
+              id !==
+              deleteRuleTarget.id,
           ),
       );
+
+      setDeleteRuleTarget(null);
     } catch (error) {
       console.error(
         "Failed to delete rule:",
         error,
       );
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  const handleBulkStatusChange = async (
+    status: "enable" | "disable",
+  ) => {
+    if (
+      selectedRules.length === 0
+    ) {
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+
+      const selectedRuleObjects =
+        rules.filter((rule) =>
+          selectedRules.includes(
+            rule.id,
+          ),
+        );
+
+      for (const rule of selectedRuleObjects) {
+        await dispatch(
+          updateRule({
+            ...rule,
+            status,
+            updatedAt:
+              new Date()
+                .toISOString()
+                .split("T")[0],
+          }),
+        ).unwrap();
+      }
+
+      if (shopId) {
+        await dispatch(
+          fetchRules(shopId),
+        ).unwrap();
+      }
+
+      setSelectedRules([]);
+    } catch (error) {
+      console.error(
+        `Failed to ${status} selected rules:`,
+        error,
+      );
+    } finally {
+      setBulkActionLoading(false);
+    }
+  };
+
+  const handleBulkEnable = () => {
+    handleBulkStatusChange("enable");
+  };
+
+  const handleBulkDisable = () => {
+    handleBulkStatusChange("disable");
+  };
+
+  const handleBulkDelete = () => {
+    if (
+      selectedRules.length === 0
+    ) {
+      return;
+    }
+
+    setBulkDeleteError(null);
+    setBulkDeleteOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (
+      selectedRules.length === 0
+    ) {
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+      setBulkDeleteError(null);
+
+      const idsToDelete = [
+        ...selectedRules,
+      ];
+
+      for (const ruleId of idsToDelete) {
+        await dispatch(
+          deleteRule(ruleId),
+        ).unwrap();
+      }
+
+      if (shopId) {
+        await dispatch(
+          fetchRules(shopId),
+        ).unwrap();
+      }
+
+      setSelectedRules([]);
+      setBulkDeleteOpen(false);
+    } catch (error) {
+      console.error(
+        "Failed to delete selected rules:",
+        error,
+      );
+
+      setBulkDeleteError(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete selected rules",
+      );
+    } finally {
+      setBulkActionLoading(false);
     }
   };
 
@@ -226,7 +337,9 @@ export function useRuleList({
         ),
     );
 
-  const selectedItemsCount: number | "All" =
+  const selectedItemsCount:
+    | number
+    | "All" =
     allDisplayedSelected
       ? "All"
       : selectedRules.length;
@@ -234,29 +347,30 @@ export function useRuleList({
   return {
     searchOpen,
     searchValue,
-
     sortPopoverActive,
     sortField,
     sortDirection,
-
     selectedRules,
-
     displayedRules,
-
     selectedItemsCount,
-
+    deleteRuleTarget,
+    deleteLoading,
+    bulkActionLoading,
+    bulkDeleteOpen,
+    bulkDeleteError,
     toggleSearch,
-
     setSearchValue,
-
     setSortPopoverActive,
-
     handleSort,
-
     handleSelectionChange,
-
     handleDelete,
-
+    confirmDelete,
+    handleBulkEnable,
+    handleBulkDisable,
+    handleBulkDelete,
+    confirmBulkDelete,
+    setDeleteRuleTarget,
+    setBulkDeleteOpen,
     setSelectedRules,
   };
 }
