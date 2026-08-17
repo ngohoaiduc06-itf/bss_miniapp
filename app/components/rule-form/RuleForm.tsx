@@ -97,27 +97,20 @@ export default function RuleForm({
       "all",
     );
 
-  const [tagInput, setTagInput] =
-    useState("");
+  const [tagInput, setTagInput] = useState("");
 
   const [tags, setTags] =
     useState<string[]>(
       rule?.tags ?? [],
     );
 
-  const [products, setProducts] =
-    useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
-  const [productsLoading, setProductsLoading] =
-    useState(false);
+  const [productsLoading, setProductsLoading] = useState(false);
 
-  const [productsError, setProductsError] =
-    useState<string | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
-  const [
-    pricingType,
-    setPricingType,
-  ] =
+  const [pricingType, setPricingType,] =
     useState<PricingType>(
       rule?.pricingType ??
       "fixedPrice",
@@ -129,43 +122,33 @@ export default function RuleForm({
       "",
     );
 
-  const [
-    showProductPricingDetails,
-    setShowProductPricingDetails,
-  ] = useState(true);
+  const [showProductPricingDetails, setShowProductPricingDetails,] = useState(true);
+
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (!isEdit) {
       return;
     }
-
     if (!rule) {
       return;
     }
 
     setName(rule.name);
-
     setStatus(rule.status);
-
     setApplyTo(
       rule.applyTo,
     );
-
     setTags(
       rule.tags ?? [],
     );
-
     setPricingType(
       rule.pricingType,
     );
-
     setAmount(
       rule.value.toString(),
     );
-  }, [
-    isEdit,
-    rule,
-  ]);
+  }, [isEdit, rule]);
 
   useEffect(() => {
     if (!isEdit || !ruleId) {
@@ -262,85 +245,87 @@ export default function RuleForm({
       amount,
     ) || 0;
 
-  const handleSave = () => {
-    const trimmedName =
-      name.trim();
+  const handleSave = async () => {
+    const trimmedName = name.trim();
 
     if (!trimmedName) {
       return;
     }
 
     if (!shopData.id) {
-      console.error("Cannot save rule: shop data not loaded yet");
-      return;
-    }
-
-    /**
-     * EDIT
-     */
-    if (isEdit) {
-      if (!rule) {
-        console.error(
-          "Cannot update rule. Rule not found:",
-          ruleId,
-        );
-
-        return;
-      }
-
-      const updatedRule: Rule =
-      {
-        ...rule,
-        name: trimmedName,
-        status,
-        applyTo,
-        tags,
-        pricingType,
-        value:
-          numericAmount,
-        updatedAt:
-          new Date()
-            .toISOString()
-            .split("T")[0],
-      };
-
-      dispatch(
-        updateRule(
-          updatedRule,
-        ),
-      );
-
-      navigate(
-        "/app",
-      );
+      shopify.toast.show("Shop data not loaded yet. Please try again.", {
+        isError: true,
+      });
 
       return;
     }
 
-    /**
-     * CREATE
-     */
+    setIsSaving(true);
 
-    dispatch(
-      createRule({
-        shopId: shopData.id,
-        data: {
+    try {
+      /**
+       * EDIT
+       */
+      if (isEdit) {
+        if (!rule) {
+          shopify.toast.show("Cannot update rule: rule not found.", {
+            isError: true,
+          });
+
+          return;
+        }
+
+        const updatedRule: Rule = {
+          ...rule,
           name: trimmedName,
           status,
-          priority: 1,
           applyTo,
           tags,
           pricingType,
           value: numericAmount,
-        },
-      }),
-    );
+          updatedAt: new Date().toISOString().split("T")[0],
+        };
 
-    navigate(
-      "/app",
-    );
+        await dispatch(updateRule(updatedRule)).unwrap();
+
+        navigate("/app");
+
+        return;
+      }
+
+      /**
+       * CREATE
+       */
+      await dispatch(
+        createRule({
+          shopId: shopData.id,
+          data: {
+            name: trimmedName,
+            status,
+            priority: 1,
+            applyTo,
+            tags,
+            pricingType,
+            value: numericAmount,
+          },
+        }),
+      ).unwrap();
+
+      navigate("/app");
+    } catch (error) {
+      console.error("Failed to save rule:", error);
+
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to save rule. Please try again.";
+
+      shopify.toast.show(message, { isError: true });
+    } finally {
+      setIsSaving(false);
+    }
   };
-
+  
   const pricingOptions = [
     {
       label:
