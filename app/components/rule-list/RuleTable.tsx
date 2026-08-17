@@ -170,14 +170,14 @@ export default function RuleTable({
                     }
                   />
 
-                  <Button
+                  {/* <Button
                     icon={
                       DuplicateIcon
                     }
                     variant="secondary"
                     size="slim"
                     accessibilityLabel={`Duplicate ${rule.name}`}
-                  />
+                  /> */}
 
                   <Button
                     icon={DeleteIcon}

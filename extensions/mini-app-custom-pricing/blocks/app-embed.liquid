@@ -9,7 +9,7 @@
     const rules = {{ shop.metafields.bss.custom_pricing_rules.value | default: '[]' | json }};
     const moneyFormat = {{ shop.money_format | json }};
 
-    console.log("[BSS Custom Pricing] Init Data:", { product, rules, moneyFormat });
+    console.log("[BSS Custom Pricing] Init Data:", { product, moneyFormat });
 
     if (!product || !rules.length) return;
 
@@ -126,7 +126,6 @@
         }
 
         console.log("[BSS Custom Pricing] Applied Rule & Prices:", {
-          rule: activeRule,
           originalPrice: formattedOriginal,
           discountedPrice: formattedDiscounted
         });

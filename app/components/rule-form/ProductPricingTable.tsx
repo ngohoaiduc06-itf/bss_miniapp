@@ -40,7 +40,7 @@ export default function ProductPricingTable({
     1,
     Math.ceil(
       products.length /
-        PRODUCTS_PER_PAGE,
+      PRODUCTS_PER_PAGE,
     ),
   );
 
@@ -53,7 +53,7 @@ export default function ProductPricingTable({
       return products.slice(
         startIndex,
         startIndex +
-          PRODUCTS_PER_PAGE,
+        PRODUCTS_PER_PAGE,
       );
     }, [
       products,
@@ -66,37 +66,31 @@ export default function ProductPricingTable({
   const getModifiedPrice = (
     originalPrice: number,
   ) => {
-    let modifiedPrice =
-      originalPrice;
+    let modifiedPrice = originalPrice;
 
     switch (pricingType) {
       case "fixedPrice":
-        modifiedPrice =
-          numericAmount;
+        modifiedPrice = numericAmount;
         break;
 
       case "fixedDiscount":
-        modifiedPrice =
-          originalPrice -
-          numericAmount;
+        modifiedPrice = originalPrice - numericAmount;
         break;
 
       case "percentage":
-        modifiedPrice =
-          originalPrice *
-          (1 -
-            numericAmount / 100);
+        modifiedPrice = originalPrice * (1 - numericAmount / 100);
         break;
 
       default:
-        modifiedPrice =
-          originalPrice;
+        modifiedPrice = originalPrice;
     }
 
-    return Math.max(
-      modifiedPrice,
-      0,
-    );
+    modifiedPrice = Math.max(modifiedPrice, 0);
+    if (modifiedPrice >= originalPrice) {
+      return originalPrice;
+    }
+
+    return modifiedPrice;
   };
 
   if (loading) {
@@ -251,20 +245,21 @@ export default function ProductPricingTable({
                 </IndexTable.Cell>
 
                 {/* MODIFIED PRICE */}
-
                 <IndexTable.Cell>
-                  <div
-                    style={{
-                      textAlign:
-                        "right",
-                    }}
-                  >
+                  <div style={{ textAlign: "right" }}>
                     <Text
                       as="span"
+                      tone={
+                        modifiedPrice < product.price
+                          ? undefined
+                          : "subdued"
+                      }
                     >
-                      $
-                      {modifiedPrice.toFixed(
-                        2,
+                      ${modifiedPrice.toFixed(2)}
+                      {modifiedPrice >= product.price && numericAmount > 0 && (
+                        <Text as="span" tone="subdued" variant="bodySm">
+                          {" "}(no discount)
+                        </Text>
                       )}
                     </Text>
                   </div>
@@ -279,39 +274,39 @@ export default function ProductPricingTable({
 
       {products.length >
         PRODUCTS_PER_PAGE && (
-        <Box padding="400">
-          <InlineStack align="center">
-            <Pagination
-              hasPrevious={
-                currentPage > 1
-              }
-              onPrevious={() =>
-                setCurrentPage(
-                  (page) =>
-                    Math.max(
-                      1,
-                      page - 1,
-                    ),
-                )
-              }
-              hasNext={
-                currentPage <
-                totalPages
-              }
-              onNext={() =>
-                setCurrentPage(
-                  (page) =>
-                    Math.min(
-                      totalPages,
-                      page + 1,
-                    ),
-                )
-              }
-              label={`Page ${currentPage} of ${totalPages}`}
-            />
-          </InlineStack>
-        </Box>
-      )}
+          <Box padding="400">
+            <InlineStack align="center">
+              <Pagination
+                hasPrevious={
+                  currentPage > 1
+                }
+                onPrevious={() =>
+                  setCurrentPage(
+                    (page) =>
+                      Math.max(
+                        1,
+                        page - 1,
+                      ),
+                  )
+                }
+                hasNext={
+                  currentPage <
+                  totalPages
+                }
+                onNext={() =>
+                  setCurrentPage(
+                    (page) =>
+                      Math.min(
+                        totalPages,
+                        page + 1,
+                      ),
+                  )
+                }
+                label={`Page ${currentPage} of ${totalPages}`}
+              />
+            </InlineStack>
+          </Box>
+        )}
     </>
   );
 }

@@ -126,6 +126,12 @@ export default function RuleForm({
 
   const [isSaving, setIsSaving] = useState(false);
 
+  const [errors, setErrors] = useState<{
+    name?: string;
+    amount?: string;
+    tags?: string;
+  }>({});
+
   useEffect(() => {
     if (!isEdit) {
       return;
@@ -203,28 +209,23 @@ export default function RuleForm({
   }, [shopData.id]);
 
   const addTag = () => {
-    const newTag =
-      tagInput.trim();
+    const newTag = tagInput.trim();
 
     if (!newTag) {
       return;
     }
 
-    if (
-      tags.includes(newTag)
-    ) {
+    if (tags.includes(newTag)) {
       setTagInput("");
       return;
     }
 
-    setTags(
-      (currentTags) => [
-        ...currentTags,
-        newTag,
-      ],
-    );
-
+    setTags((currentTags) => [...currentTags, newTag]);
     setTagInput("");
+
+    if (errors.tags) {
+      setErrors((current) => ({ ...current, tags: undefined }));
+    }
   };
 
   const removeTag = (
@@ -240,17 +241,51 @@ export default function RuleForm({
     );
   };
 
+  const validate = (): boolean => {
+    const newErrors: typeof errors = {};
+
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      newErrors.name = "Name is required.";
+    }
+
+    const trimmedAmount = amount.trim();
+
+    if (!trimmedAmount) {
+      newErrors.amount = "This field is required.";
+    } else {
+      const parsedAmount = Number(trimmedAmount);
+
+      if (!Number.isFinite(parsedAmount)) {
+        newErrors.amount = "Enter a valid number.";
+      } else if (parsedAmount < 0) {
+        newErrors.amount = "Value cannot be negative.";
+      } else if (pricingType === "percentage" && parsedAmount > 100) {
+        newErrors.amount = "Percentage cannot exceed 100.";
+      }
+    }
+
+    if (applyTo === "tags" && tags.length === 0) {
+      newErrors.tags = "Add at least one product tag.";
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
   const numericAmount =
     Number.parseFloat(
       amount,
     ) || 0;
 
   const handleSave = async () => {
-    const trimmedName = name.trim();
-
-    if (!trimmedName) {
+    if (!validate()) {
       return;
     }
+
+    const trimmedName = name.trim();
 
     if (!shopData.id) {
       shopify.toast.show("Shop data not loaded yet. Please try again.", {
@@ -263,9 +298,6 @@ export default function RuleForm({
     setIsSaving(true);
 
     try {
-      /**
-       * EDIT
-       */
       if (isEdit) {
         if (!rule) {
           shopify.toast.show("Cannot update rule: rule not found.", {
@@ -293,9 +325,6 @@ export default function RuleForm({
         return;
       }
 
-      /**
-       * CREATE
-       */
       await dispatch(
         createRule({
           shopId: shopData.id,
@@ -325,7 +354,7 @@ export default function RuleForm({
       setIsSaving(false);
     }
   };
-  
+
   const pricingOptions = [
     {
       label:
@@ -421,13 +450,10 @@ export default function RuleForm({
           ),
       }}
       primaryAction={{
-        content: isEdit
-          ? "Save changes"
-          : "Save",
-        onAction:
-          handleSave,
-        disabled:
-          !name.trim(),
+        content: isEdit ? "Save changes" : "Save",
+        onAction: handleSave,
+        loading: isSaving,
+        disabled: !name.trim() || isSaving,
       }}
       secondaryActions={[
         {
@@ -498,13 +524,17 @@ export default function RuleForm({
                 <TextField
                   label="Name"
                   value={name}
-                  onChange={
-                    setName
-                  }
+                  onChange={(value) => {
+                    setName(value);
+                    if (errors.name) {
+                      setErrors((current) => ({ ...current, name: undefined }));
+                    }
+                  }}
                   autoComplete="off"
                   requiredIndicator
                   placeholder="Example: Rule for VIP customers"
                   helpText="Enter a name to easily identify this pricing rule."
+                  error={errors.name}
                 />
 
                 <Select
@@ -565,32 +595,24 @@ export default function RuleForm({
                   title=""
                   choices={[
                     {
-                      label:
-                        "All products",
-                      value:
-                        "all",
-                      helpText:
-                        "This rule will be applied to all products in the store.",
+                      label: "All products",
+                      value: "all",
+                      helpText: "This rule will be applied to all products in the store.",
                     },
                     {
-                      label:
-                        "Product tags",
-                      value:
-                        "tags",
-                      helpText:
-                        "Apply this rule to products containing any selected tag.",
+                      label: "Product tags",
+                      value: "tags",
+                      helpText: "Apply this rule to products containing any selected tag.",
                     },
                   ]}
-                  selected={[
-                    applyTo,
-                  ]}
-                  onChange={(
-                    selected,
-                  ) => {
-                    setApplyTo(
-                      selected[0] as ApplyToType,
-                    );
+                  selected={[applyTo]}
+                  onChange={(selected) => {
+                    setApplyTo(selected[0] as ApplyToType);
+                    if (errors.tags) {
+                      setErrors((current) => ({ ...current, tags: undefined }));
+                    }
                   }}
+                  error={errors.tags}
                 />
 
                 {applyTo ===
@@ -718,36 +740,32 @@ export default function RuleForm({
 
                 <TextField
                   label={
-                    pricingType ===
-                      "fixedPrice"
+                    pricingType === "fixedPrice"
                       ? "Price"
-                      : pricingType ===
-                        "fixedDiscount"
+                      : pricingType === "fixedDiscount"
                         ? "Discount amount"
                         : "Discount percentage"
                   }
                   type="number"
                   value={amount}
-                  onChange={
-                    setAmount
-                  }
-                  suffix={
-                    pricingType ===
-                      "percentage"
-                      ? "%"
-                      : "USD"
-                  }
+                  onChange={(value) => {
+                    setAmount(value);
+                    if (errors.amount) {
+                      setErrors((current) => ({ ...current, amount: undefined }));
+                    }
+                  }}
+                  suffix={pricingType === "percentage" ? "%" : "USD"}
                   min="0"
                   autoComplete="off"
                   helpText={
-                    pricingType ===
-                      "fixedPrice"
+                    pricingType === "fixedPrice"
                       ? "Set the final price for the selected products."
-                      : pricingType ===
-                        "fixedDiscount"
+                      : pricingType === "fixedDiscount"
                         ? "This amount will be deducted from the original price."
                         : "This percentage will be deducted from the original price."
                   }
+                  error={errors.amount}
+                  requiredIndicator
                 />
 
                 <Text
@@ -836,16 +854,11 @@ export default function RuleForm({
 
           <Button
             variant="primary"
-            onClick={
-              handleSave
-            }
-            disabled={
-              !name.trim()
-            }
+            onClick={handleSave}
+            loading={isSaving}
+            disabled={!name.trim() || isSaving}
           >
-            {isEdit
-              ? "Save changes"
-              : "Save"}
+            {isEdit ? "Save changes" : "Save"}
           </Button>
         </InlineStack>
 

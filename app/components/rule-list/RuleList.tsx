@@ -86,24 +86,6 @@ export default function RuleList() {
         onAction: () =>
           navigate("/app"),
       }}
-      secondaryActions={[
-        {
-          content: "Export",
-          onAction: () => {
-            console.log(
-              "Export rules",
-            );
-          },
-        },
-        {
-          content: "Import",
-          onAction: () => {
-            console.log(
-              "Import rules",
-            );
-          },
-        },
-      ]}
       primaryAction={{
         content: "Add rule",
         onAction:
