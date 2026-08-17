@@ -10,7 +10,8 @@ import { errorHandler } from "./middleware/error.middleware"
 
 const app = new Koa();
 
-app.use(cors());
+// app.use(cors());
+app.use(cors({ origin: "*" }));
 
 app.use(
   bodyParser({
