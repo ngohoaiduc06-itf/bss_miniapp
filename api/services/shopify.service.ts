@@ -67,6 +67,19 @@ export async function shopifyGraphql<
 async function getShopGid(
   shopId: number,
 ): Promise<string> {
+  const shop =
+    await Shop.findByPk(shopId);
+
+  if (!shop) {
+    throw new Error(
+      "Shop not found",
+    );
+  }
+
+  if (shop.shopGid) {
+    return shop.shopGid;
+  }
+
   const data =
     await shopifyGraphql<{
       shop: {
@@ -83,7 +96,14 @@ async function getShopGid(
       `,
     );
 
-  return data.shop.id;
+  const shopGid =
+    data.shop.id;
+
+  await shop.update({
+    shopGid,
+  });
+
+  return shopGid;
 }
 
 export async function syncRulesToShopMetafield(

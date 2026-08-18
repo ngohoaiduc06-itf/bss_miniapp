@@ -13,17 +13,12 @@ export class Shop extends Model<
   InferCreationAttributes<Shop>
 > {
   declare id: CreationOptional<number>;
-
   declare shopDomain: string;
-
   declare shopName: string;
-
   declare accessToken: string;
-
   declare status: "active" | "uninstalled";
-
+  declare shopGid: string | null;
   declare createdAt: CreationOptional<Date>;
-
   declare updatedAt: CreationOptional<Date>;
 }
 
@@ -58,6 +53,11 @@ Shop.init(
       ),
       allowNull: false,
       defaultValue: "active",
+    },
+
+    shopGid: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
 
     createdAt: {
