@@ -93,58 +93,107 @@
     
     let isUpdatingDOM = false;
 
-    function applyPricing() {
-      const variant = getCurrentVariant();
-      if (!variant) return;
+    function resetContainer(container) {
+      const regularBlock = container.querySelector(".price__regular");
+      const saleBlock = container.querySelector(".price__sale");
+      const regularPrice = container.querySelector(".price__regular .price-item--regular");
 
-      const originalPrice = Number(variant.price || 0);
-      const discountedPrice = calculatePrice(originalPrice, activeRule);
-
-      if (!Number.isFinite(originalPrice) || originalPrice <= 0 || discountedPrice >= originalPrice) {
-        return;
+      if (saleBlock) {
+        saleBlock.classList.add("hidden");
+        saleBlock.style.display = "none";
       }
 
-      const formattedOriginal = formatMoney(originalPrice, moneyFormat);
-      const formattedDiscounted = formatMoney(discountedPrice, moneyFormat);
+      if (regularBlock) {
+        regularBlock.classList.remove("hidden");
+        regularBlock.style.display = "";
+      }
 
-      isUpdatingDOM = true;
+      if (regularPrice && regularPrice.dataset.bssOriginal !== undefined) {
+        regularPrice.innerHTML = regularPrice.dataset.bssOriginal;
+        regularPrice.style.color = "";
+      }
 
-      document.querySelectorAll(".price").forEach((container) => {
-        const saleBlock = container.querySelector(".price__sale");
-        if (!saleBlock) return;
-
-        const compareEl = saleBlock.querySelector("s.price-item--regular");
-        const saleEl = saleBlock.querySelector(".price-item--sale");
-
-        if (compareEl && compareEl.textContent !== formattedOriginal) {
-          compareEl.textContent = formattedOriginal;
-        }
-
-        if (saleEl && saleEl.textContent !== formattedDiscounted) {
-          saleEl.textContent = formattedDiscounted;
-          saleEl.style.color = "#d82c0d";
-        }
-
-        console.log("[BSS Custom Pricing] Applied Rule & Prices:", {
-          originalPrice: formattedOriginal,
-          discountedPrice: formattedDiscounted
-        });
-
-        saleBlock.classList.remove("hidden");
-        saleBlock.style.display = "";
-
-        const regularBlock = container.querySelector(".price__regular");
-        if (regularBlock) {
-          regularBlock.classList.add("hidden");
-          regularBlock.style.display = "none";
-        }
-
-        container.classList.add("price--on-sale");
-      });
-      setTimeout(() => {
-        isUpdatingDOM = false;
-      }, 50);
+      container.classList.remove("price--on-sale");
     }
+
+    function applyPricing() {
+        const variant = getCurrentVariant();
+        if (!variant) return;
+
+        const originalPrice = Number(variant.price || 0);
+        const discountedPrice = calculatePrice(originalPrice, activeRule);
+
+        if (!Number.isFinite(originalPrice) || originalPrice <= 0) {
+          return;
+        }
+
+        const formattedOriginal = formatMoney(originalPrice, moneyFormat);
+        const formattedDiscounted = formatMoney(discountedPrice, moneyFormat);
+
+        isUpdatingDOM = true;
+
+        document.querySelectorAll(".price").forEach((container) => {
+          resetContainer(container); 
+          const regularBlock = container.querySelector(".price__regular");
+          const saleBlock = container.querySelector(".price__sale");
+          const salePrice = container.querySelector(".price__sale .price-item--sale");
+          const comparePrice = container.querySelector(".price__sale s.price-item--regular");
+          const regularPrice = container.querySelector(".price__regular .price-item--regular");
+
+          if (discountedPrice < originalPrice) {
+            if (saleBlock && salePrice) {
+              if (comparePrice && comparePrice.textContent !== formattedOriginal) {
+                comparePrice.textContent = formattedOriginal;
+              }
+
+              if (salePrice.textContent !== formattedDiscounted) {
+                salePrice.textContent = formattedDiscounted;
+                salePrice.style.color = "#d82c0d";
+              }
+
+              saleBlock.classList.remove("hidden");
+              saleBlock.style.display = "";
+
+              if (regularBlock) {
+                regularBlock.classList.add("hidden");
+                regularBlock.style.display = "none";
+              }
+            } else if (regularPrice) {
+              if (regularPrice.dataset.bssOriginal === undefined) {
+                regularPrice.dataset.bssOriginal = regularPrice.innerHTML;
+              }
+              const customHTML = `<s class="price-item price-item--regular" style="text-decoration: line-through; opacity: 0.7; margin-right: 8px;">${formattedOriginal}</s><span class="price-item price-item--sale" style="color: #d82c0d; font-weight: bold;">${formattedDiscounted}</span>`;
+
+              if (regularPrice.innerHTML !== customHTML) {
+                regularPrice.innerHTML = customHTML;
+              }
+            }
+
+            container.classList.add("price--on-sale");
+          } 
+          else if (activeRule.pricingType === "fixedPrice") {
+            if (regularPrice) {
+              if (regularPrice.dataset.bssOriginal === undefined) {
+                regularPrice.dataset.bssOriginal = regularPrice.innerHTML;
+              }
+              regularPrice.textContent = formattedDiscounted;
+              regularPrice.style.color = "";
+            }
+            if (salePrice) {
+              salePrice.textContent = formattedDiscounted;
+            }
+          }
+
+          console.log("[BSS Custom Pricing] Applied Rule & Prices:", {
+            rule: activeRule,
+            originalPrice: formattedOriginal,
+            customPrice: formattedDiscounted,
+          });
+        });
+        setTimeout(() => {
+          isUpdatingDOM = false;
+        }, 50);
+      }
 
     function initListeners() {
       window.addEventListener("popstate", applyPricing);
