@@ -8,12 +8,12 @@ export const action = async ({
   request,
 }: ActionFunctionArgs) => {
 
-  // console.log("=================================");
-  // console.log("[WEBHOOK] app/uninstalled RECEIVED");
-  // console.log("=================================");
+  console.log("=================================");
+  console.log("[WEBHOOK] app/uninstalled RECEIVED");
+  console.log("=================================");
 
 
-  const { shop, session, topic, } = await authenticate.webhook(request);
+  const { shop, session } = await authenticate.webhook(request);
 
   const url =
     `${API_BASE_URL}/api/shops/${encodeURIComponent(shop,)}/uninstalled`;
@@ -61,10 +61,10 @@ export const action = async ({
       where: { shop },
     });
   }
-  
-  // console.log("=================================");
-  // console.log("[WEBHOOK] app/uninstalled RECEIVED");
-  // console.log("=================================");
+
+  console.log("=================================");
+  console.log("[WEBHOOK] app/uninstalled RECEIVED");
+  console.log("=================================");
 
   return new Response();
 };
