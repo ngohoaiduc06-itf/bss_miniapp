@@ -19,7 +19,7 @@ export class Shop extends Model<
   declare shopName: string;
 
   declare accessToken: string;
-  
+
   declare status: "active" | "uninstalled";
 
   declare createdAt: CreationOptional<Date>;

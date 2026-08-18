@@ -16,6 +16,8 @@ export type ProductPricingTableProps = {
   products: Product[];
   pricingType: PricingType;
   amount: string;
-  loading?: boolean;
-  error?: string | null;
+  loading: boolean;
+  error: string | null;
+  hasNextPage: boolean;
+  onLoadMore: () => void;
 };

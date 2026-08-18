@@ -110,6 +110,13 @@ export default function RuleForm({
 
   const [productsError, setProductsError] = useState<string | null>(null);
 
+
+  const [hasNextPage, setHasNextPage] =
+    useState(false);
+
+  const [nextCursor, setNextCursor] =
+    useState<string | null>(null);
+
   const [pricingType, setPricingType,] =
     useState<PricingType>(
       rule?.pricingType ??
@@ -131,6 +138,8 @@ export default function RuleForm({
     amount?: string;
     tags?: string;
   }>({});
+
+
 
   useEffect(() => {
     if (!isEdit) {
@@ -173,7 +182,6 @@ export default function RuleForm({
     dispatch,
   ]);
 
-
   useEffect(() => {
     if (!shopData.id) {
       return;
@@ -186,28 +194,28 @@ export default function RuleForm({
         setProductsLoading(true);
         setProductsError(null);
 
-        const data = await getProducts(shopId);
-
-        if (applyTo === "all") {
-          setProducts(data);
-          return;
-        }
-
-        const normalizedTags = tags.map((tag) =>
-          tag.trim().toLowerCase()
+        const response = await getProducts(
+          shopId,
+          {
+            limit: 50,
+            tags:
+              applyTo === "tags"
+                ? tags
+                : undefined,
+          },
         );
 
-        const filteredProducts = data.filter((product) => {
-          const productTags = (product.tags ?? []).map((tag) =>
-            tag.trim().toLowerCase()
-          );
+        setProducts(
+          response.products,
+        );
 
-          return normalizedTags.some((tag) =>
-            productTags.includes(tag)
-          );
-        });
+        setHasNextPage(
+          response.pagination.hasNextPage,
+        );
 
-        setProducts(filteredProducts);
+        setNextCursor(
+          response.pagination.endCursor,
+        );
       } catch (error) {
         console.error(
           "Failed to load Shopify products:",
@@ -219,13 +227,77 @@ export default function RuleForm({
             ? error.message
             : "Failed to load products",
         );
+
+        setProducts([]);
+        setHasNextPage(false);
+        setNextCursor(null);
       } finally {
         setProductsLoading(false);
       }
     }
 
     loadProducts();
-  }, [shopData.id, applyTo, tags]);
+  }, [
+    shopData.id,
+    applyTo,
+    tags,
+  ]);
+
+  const loadMoreProducts = async () => {
+    if (
+      !shopData.id ||
+      !hasNextPage ||
+      !nextCursor ||
+      productsLoading
+    ) {
+      return;
+    }
+
+    try {
+      setProductsLoading(true);
+      setProductsError(null);
+
+      const response = await getProducts(
+        shopData.id,
+        {
+          limit: 50,
+          cursor: nextCursor,
+          tags:
+            applyTo === "tags"
+              ? tags
+              : undefined,
+        },
+      );
+
+      setProducts(
+        (currentProducts) => [
+          ...currentProducts,
+          ...response.products,
+        ],
+      );
+
+      setHasNextPage(
+        response.pagination.hasNextPage,
+      );
+
+      setNextCursor(
+        response.pagination.endCursor,
+      );
+    } catch (error) {
+      console.error(
+        "Failed to load more products:",
+        error,
+      );
+
+      setProductsError(
+        error instanceof Error
+          ? error.message
+          : "Failed to load more products",
+      );
+    } finally {
+      setProductsLoading(false);
+    }
+  };
 
   const addTag = () => {
     const newTag = tagInput.trim();
@@ -699,18 +771,10 @@ export default function RuleForm({
                           </InlineStack>
                         )}
 
-                      <Text
-                        as="p"
-                        tone="subdued"
-                      >
-                        Enter one or
-                        more product
-                        tags. Products
-                        matching these
-                        tags will be
-                        selected when
-                        tag-based pricing
-                        is implemented.
+                      <Text as="p" tone="subdued">
+                        Enter one or more product tags. Products
+                        matching any of these tags will be included
+                        in this pricing rule.
                       </Text>
 
                     </BlockStack>
@@ -849,6 +913,8 @@ export default function RuleForm({
                     amount={amount}
                     loading={productsLoading}
                     error={productsError}
+                    hasNextPage={hasNextPage}
+                    onLoadMore={loadMoreProducts}
                   />
                 </div>
               )}
